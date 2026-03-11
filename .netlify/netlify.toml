@@ -1,0 +1,63 @@
+functionsDirectory = "/Users/shloksingh/Downloads/Document /SIGNODES/NIET weather station/project/netlify/functions"
+functionsDirectoryOrigin = "config-v1"
+redirectsOrigin = "config"
+plugins = []
+headers = []
+
+[build]
+publish = "/Users/shloksingh/Downloads/Document /SIGNODES/NIET weather station/project/dist"
+publishOrigin = "config"
+commandOrigin = "config"
+base = "/Users/shloksingh/Downloads/Document /SIGNODES/NIET weather station/project"
+command = "npm run build"
+functions = "/Users/shloksingh/Downloads/Document /SIGNODES/NIET weather station/project/netlify/functions"
+
+[build.environment]
+NODE_VERSION = "18"
+NPM_VERSION = "9"
+GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxRpVtuGkPIcao_s891Jrj16izDFEh1yRAwsv_fk9ZYKRrWy8u0yieuk4QEm-BCNehc3A/exec"
+
+[build.processing]
+
+[build.processing.css]
+
+[build.processing.html]
+
+[build.processing.images]
+
+[build.processing.js]
+
+[build.services]
+
+[dev]
+targetPort = 3002.0
+port = 8888.0
+framework = "vite"
+
+[functions]
+
+[functions."*"]
+
+[[redirects]]
+from = "/api/*"
+to = "/.netlify/functions/sensorData"
+status = 200.0
+force = true
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
+
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]

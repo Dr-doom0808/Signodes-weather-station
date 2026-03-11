@@ -1,0 +1,284 @@
+import React from 'react';
+import { useNodes } from '../../context/NodesContext';
+import { Thermometer, Wind, AlertTriangle } from 'lucide-react';
+import { useDarkMode } from '../../context/DarkModeContext';
+
+const AirQualityBar: React.FC = () => {
+  const { nodes } = useNodes();
+  const { darkMode } = useDarkMode();
+  const nodeData = nodes.length > 0 ? nodes[0] : null;
+
+  // Calculate overall AQI from PM2.5 and PM10
+  const calculateOverallAQI = () => {
+    const pm25 = nodeData?.aqi25val || 0;
+    const pm10 = nodeData?.aqi10val || 0;
+    return Math.max(pm25, pm10);
+  };
+
+  // Get temperature-based color conditions
+  const getTemperatureColor = (temp: number) => {
+    if (temp <= 10) return 'from-blue-400 to-blue-600'; // Cold
+    if (temp <= 20) return 'from-green-400 to-green-600'; // Cool
+    if (temp <= 30) return 'from-yellow-400 to-yellow-600'; // Warm
+    if (temp <= 35) return 'from-orange-400 to-orange-600'; // Hot
+    return 'from-red-400 to-red-600'; // Very Hot
+  };
+
+  // Get AQI color and status
+  const getAqiInfo = (aqi: number) => {
+    if (darkMode) {
+      if (aqi <= 50) return { 
+        color: 'bg-green-500', 
+        textColor: 'text-green-400',
+        status: 'Good', 
+        description: 'Air quality is satisfactory',
+        bgGradient: 'from-green-900/30 to-green-800/20'
+      };
+      if (aqi <= 100) return { 
+        color: 'bg-yellow-500', 
+        textColor: 'text-yellow-400',
+        status: 'Moderate', 
+        description: 'Air quality is acceptable',
+        bgGradient: 'from-yellow-900/30 to-yellow-800/20'
+      };
+      if (aqi <= 150) return { 
+        color: 'bg-orange-500', 
+        textColor: 'text-orange-400',
+        status: 'Unhealthy for Sensitive Groups', 
+        description: 'Sensitive people may experience symptoms',
+        bgGradient: 'from-orange-900/30 to-orange-800/20'
+      };
+      if (aqi <= 200) return { 
+        color: 'bg-red-500', 
+        textColor: 'text-red-400',
+        status: 'Unhealthy', 
+        description: 'Everyone may experience health effects',
+        bgGradient: 'from-red-900/30 to-red-800/20'
+      };
+      if (aqi <= 300) return { 
+        color: 'bg-purple-500', 
+        textColor: 'text-purple-400',
+        status: 'Very Unhealthy', 
+        description: 'Health alert for everyone',
+        bgGradient: 'from-purple-900/30 to-purple-800/20'
+      };
+      return { 
+        color: 'bg-red-700', 
+        textColor: 'text-red-400',
+        status: 'Hazardous', 
+        description: 'Emergency conditions',
+        bgGradient: 'from-red-900/40 to-red-800/30'
+      };
+    } else {
+      if (aqi <= 50) return { 
+        color: 'bg-green-500', 
+        textColor: 'text-green-700',
+        status: 'Good', 
+        description: 'Air quality is satisfactory',
+        bgGradient: 'from-green-100 to-green-200'
+      };
+      if (aqi <= 100) return { 
+        color: 'bg-yellow-500', 
+        textColor: 'text-yellow-700',
+        status: 'Moderate', 
+        description: 'Air quality is acceptable',
+        bgGradient: 'from-yellow-100 to-yellow-200'
+      };
+      if (aqi <= 150) return { 
+        color: 'bg-orange-500', 
+        textColor: 'text-orange-700',
+        status: 'Unhealthy for Sensitive Groups', 
+        description: 'Sensitive people may experience symptoms',
+        bgGradient: 'from-orange-100 to-orange-200'
+      };
+      if (aqi <= 200) return { 
+        color: 'bg-red-500', 
+        textColor: 'text-red-700',
+        status: 'Unhealthy', 
+        description: 'Everyone may experience health effects',
+        bgGradient: 'from-red-100 to-red-200'
+      };
+      if (aqi <= 300) return { 
+        color: 'bg-purple-500', 
+        textColor: 'text-purple-700',
+        status: 'Very Unhealthy', 
+        description: 'Health alert for everyone',
+        bgGradient: 'from-purple-100 to-purple-200'
+      };
+      return { 
+        color: 'bg-red-800', 
+        textColor: 'text-red-900',
+        status: 'Hazardous', 
+        description: 'Emergency conditions',
+        bgGradient: 'from-red-200 to-red-300'
+      };
+    }
+  };
+
+  const overallAQI = calculateOverallAQI();
+  const aqiInfo = getAqiInfo(overallAQI);
+  const temperature = nodeData?.temperature || 0;
+  const tempColor = getTemperatureColor(temperature);
+
+  return (
+    <section className={`py-16 bg-gradient-to-r ${darkMode ? 'from-primary-900 to-primary-800' : aqiInfo.bgGradient} animate-fade-in`} aria-label="Air Quality Information">
+      <div className="container mx-auto px-4">
+        <div className="max-w-6xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-12 space-y-3 animate-slide-in-left" aria-labelledby="air-quality-heading">
+            <h2 id="air-quality-heading" className={`text-4xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'} transition-colors duration-300`}>Air Quality & Environmental Status</h2>
+            <p className={`${darkMode ? 'text-gray-300' : 'text-gray-600'} text-lg max-w-2xl mx-auto transition-colors duration-300`}>Real-time air quality monitoring with temperature-responsive indicators</p>
+          </div>
+
+          {/* Main Air Quality Bar */}
+          <div className={`${darkMode ? 'bg-primary-800/90 backdrop-blur-sm border border-primary-700' : 'bg-white/95 backdrop-blur-sm'} rounded-3xl shadow-card p-8 mb-10 transition-all duration-300 hover:shadow-glow animate-slide-up`}>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-center" role="region" aria-label="Air quality measurements">
+              
+              {/* AQI Display */}
+              <div className="text-center lg:text-left animate-slide-in-left" style={{animationDelay: '100ms'}} role="region" aria-label="Overall air quality index">
+                <div className="flex items-center justify-center lg:justify-start mb-5">
+                  <div className={`w-5 h-5 ${aqiInfo.color} rounded-full mr-3 animate-pulse-slow shadow-inner-light`}></div>
+                  <span className={`text-xl font-semibold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors duration-300`}>Air Quality Index</span>
+                </div>
+                <div className={`text-7xl font-bold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'} transition-colors duration-300`}>{overallAQI}</div>
+                <div className={`text-2xl font-semibold ${darkMode ? 'text-white' : aqiInfo.textColor} mb-3 transition-colors duration-300`}>{aqiInfo.status}</div>
+                <div className={`text-base ${darkMode ? 'text-gray-300' : 'text-gray-600'} transition-colors duration-300`}>{aqiInfo.description}</div>
+              </div>
+
+              {/* AQI Progress Bar */}
+              <div className="lg:col-span-1 animate-slide-up" style={{animationDelay: '200ms'}}>
+                <div className="mb-6">
+                  <div className={`flex justify-between text-sm mb-3 ${darkMode ? 'text-gray-300' : 'text-gray-600'} font-medium transition-colors duration-300`}>
+                  <span>Good</span>
+                  <span>Moderate</span>
+                  <span>Unhealthy</span>
+                  <span>Hazardous</span>
+                </div>
+                  <div className="h-8 bg-gradient-to-r from-green-400 via-yellow-400 via-orange-400 via-red-400 via-purple-400 to-red-800 rounded-full relative shadow-inner-light" role="progressbar" aria-valuemin="0" aria-valuemax="500" aria-valuenow={overallAQI} aria-label="Air Quality Index progress bar">
+                    <div 
+                      className={`absolute top-0 w-3 h-10 ${darkMode ? 'bg-gray-200' : 'bg-white'} border-2 ${darkMode ? 'border-primary-600' : 'border-gray-800'} rounded-full transform -translate-y-1 shadow-soft transition-all duration-500 animate-pulse-slow`}
+                      style={{ left: `${Math.min((overallAQI / 500) * 100, 100)}%` }}
+                    ></div>
+                  </div>
+                  <div className={`flex justify-between text-xs mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'} font-medium transition-colors duration-300`}>
+                    <span>0</span>
+                    <span>50</span>
+                    <span>100</span>
+                    <span>150</span>
+                    <span>200</span>
+                    <span>300</span>
+                    <span>500+</span>
+                  </div>
+                </div>
+
+                {/* PM Values */}
+                <div className="grid grid-cols-2 gap-5" role="region" aria-label="Particulate matter measurements">
+                  <div className={`${darkMode ? 'bg-primary-700/80 border border-primary-600' : 'bg-gray-50/90 border border-gray-100'} p-4 rounded-xl shadow-soft transition-all duration-300 hover:shadow-card hover:scale-105 transform`}>
+                    <div className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-600'} transition-colors duration-300`}>PM2.5</div>
+                    <div className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'} transition-colors duration-300`}>{nodeData?.aqi25val || 'N/A'}</div>
+                    <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'} transition-colors duration-300`}>μg/m³</div>
+                  </div>
+                  <div className={`${darkMode ? 'bg-primary-700/80 border border-primary-600' : 'bg-gray-50/90 border border-gray-100'} p-4 rounded-xl shadow-soft transition-all duration-300 hover:shadow-card hover:scale-105 transform`}>
+                    <div className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-600'} transition-colors duration-300`}>PM10</div>
+                    <div className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'} transition-colors duration-300`}>{nodeData?.aqi10val || 'N/A'}</div>
+                    <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'} transition-colors duration-300`}>μg/m³</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Temperature-Responsive Section */}
+              <div className="text-center lg:text-right animate-slide-in-right" style={{animationDelay: '300ms'}}>
+                <div className="flex items-center justify-center lg:justify-end mb-5">
+                  <Thermometer className={`w-6 h-6 mr-3 ${darkMode ? 'text-gray-300' : 'text-gray-600'} animate-pulse-slow transition-colors duration-300`} />
+                  <span className={`text-xl font-semibold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors duration-300`}>Temperature Impact</span>
+                </div>
+                <div className={`text-6xl font-bold bg-gradient-to-r ${tempColor} bg-clip-text text-transparent mb-3 animate-float`}>
+                  {temperature}°C
+                </div>
+                <div className={`text-base ${darkMode ? 'text-gray-300' : 'text-gray-600'} mb-5 transition-colors duration-300 max-w-xs ml-auto`}>
+                  {temperature <= 10 && "Cold conditions may affect air quality sensors"}
+                  {temperature > 10 && temperature <= 20 && "Optimal temperature for accurate readings"}
+                  {temperature > 20 && temperature <= 30 && "Warm conditions - normal operation"}
+                  {temperature > 30 && temperature <= 35 && "Hot conditions may increase pollutant levels"}
+                  {temperature > 35 && "Very hot - potential sensor calibration needed"}
+                </div>
+
+                {/* Temperature Alert */}
+                {temperature > 35 && (
+                  <div 
+                    className={`flex items-center justify-center lg:justify-end ${darkMode ? 'text-orange-400 bg-orange-900/30' : 'text-orange-600 bg-orange-100'} px-4 py-2 rounded-xl shadow-soft animate-pulse-slow`}
+                    role="alert"
+                    aria-live="polite"
+                  >
+                    <AlertTriangle className="w-5 h-5 mr-2" aria-hidden="true" />
+                    <span className="text-sm font-medium">High Temperature Alert</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Additional Environmental Indicators */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 animate-slide-up" style={{animationDelay: '400ms'}}>
+            <div className={`${darkMode ? 'bg-primary-800/90 backdrop-blur-sm border border-primary-700 text-white' : 'bg-white/95 backdrop-blur-sm border border-gray-100'} rounded-2xl shadow-card p-6 transition-all duration-300 hover:shadow-glow transform hover:scale-[1.02] animate-slide-in-left`} style={{animationDelay: '500ms'}} role="region" aria-label="Humidity information">
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center">
+                  <Wind className={`w-7 h-7 text-blue-500 dark:text-blue-400 mr-3 animate-float`} style={{animationDelay: '100ms'}} />
+                  <span className={`font-semibold text-lg ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors duration-300`}>Humidity</span>
+                </div>
+                <span className={`text-3xl font-bold text-blue-600 dark:text-blue-400 transition-colors duration-300`}>{nodeData?.humidity || 'N/A'}%</span>
+              </div>
+              <div className={`w-full ${darkMode ? 'bg-gray-700' : 'bg-gray-200'} rounded-full h-3 shadow-inner-light transition-colors duration-300`} role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={nodeData?.humidity || 0} aria-label="Humidity level">
+                <div 
+                  className="bg-blue-500 h-3 rounded-full transition-all duration-500 shadow-soft"
+                  style={{ width: `${Math.min(nodeData?.humidity || 0, 100)}%` }}
+                ></div>
+              </div>
+              <div className={`text-base ${darkMode ? 'text-gray-300' : 'text-gray-600'} mt-4 transition-colors duration-300`}>
+                {(nodeData?.humidity || 0) < 30 && "Low humidity - dry conditions"}
+                {(nodeData?.humidity || 0) >= 30 && (nodeData?.humidity || 0) <= 60 && "Comfortable humidity levels"}
+                {(nodeData?.humidity || 0) > 60 && "High humidity - may feel muggy"}
+              </div>
+            </div>
+
+            <div className={`${darkMode ? 'bg-primary-800/90 backdrop-blur-sm border border-primary-700 text-white' : 'bg-white/95 backdrop-blur-sm border border-gray-100'} rounded-2xl shadow-card p-6 transition-all duration-300 hover:shadow-glow transform hover:scale-[1.02] animate-slide-up`} style={{animationDelay: '600ms'}} role="region" aria-label="UV Index information">
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center">
+                  <div className="w-7 h-7 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full mr-3 shadow-soft animate-pulse-slow"></div>
+                  <span className={`font-semibold text-lg ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors duration-300`}>UV Index</span>
+                </div>
+                <span className={`text-3xl font-bold text-yellow-600 dark:text-yellow-400 transition-colors duration-300`}>{nodeData?.uvIndex || 'N/A'}</span>
+              </div>
+              <div className={`text-base ${darkMode ? 'text-gray-300' : 'text-gray-600'} mb-2 transition-colors duration-300`}>
+                UV Risk: <span className={`font-medium ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors duration-300`}>{nodeData?.uvRisk || 'Unknown'}</span>
+              </div>
+              <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'} mt-2 transition-colors duration-300`}>{nodeData?.uvIndex || 0} mW/cm²</div>
+            </div>
+
+            <div className={`${darkMode ? 'bg-primary-800/90 backdrop-blur-sm border border-primary-700 text-white' : 'bg-white/95 backdrop-blur-sm border border-gray-100'} rounded-2xl shadow-card p-6 transition-all duration-300 hover:shadow-glow transform hover:scale-[1.02] animate-slide-in-right`} style={{animationDelay: '700ms'}}>
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center">
+                  <div className={`w-7 h-7 ${nodeData?.rain === 'Yes' ? 'bg-gradient-to-r from-blue-400 to-blue-600' : 'bg-gradient-to-r from-gray-300 to-gray-500'} rounded-full mr-3 shadow-soft ${nodeData?.rain === 'Yes' ? 'animate-pulse-slow' : ''}`}></div>
+                  <span className={`font-semibold text-lg ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors duration-300`}>Precipitation</span>
+                </div>
+                <span className={`text-xl font-bold ${nodeData?.rain === 'Yes' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'} transition-colors duration-300`}>
+                  {nodeData?.rain === 'Yes' ? 'Detected' : 'Clear'}
+                </span>
+              </div>
+              <div className={`text-base ${darkMode ? 'text-gray-300' : 'text-gray-600'} transition-colors duration-300`}>
+                {nodeData?.rain === 'Yes' ? 'Rain may affect air quality readings' : 'No precipitation detected'}
+              </div>
+              {nodeData?.rain === 'Yes' && (
+                <div className="mt-3 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-4 py-2 rounded-xl text-sm font-medium shadow-soft animate-float" style={{animationDelay: '200ms'}}>
+                  Weather alert: Precipitation detected
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default AirQualityBar;

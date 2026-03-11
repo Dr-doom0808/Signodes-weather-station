@@ -1,0 +1,19 @@
+{
+	"siteId": "c4ffb5d4-15f3-47ca-8af1-b1b6a3dd2b52",
+	"geolocation": {
+		"data": {
+			"country": {
+				"code": "IN",
+				"name": "India"
+			},
+			"subdivision": {
+				"code": "UP",
+				"name": "Uttar Pradesh"
+			},
+			"timezone": "Asia/Kolkata",
+			"latitude": 26.4631,
+			"longitude": 80.3479
+		},
+		"timestamp": 1771090381643
+	}
+}

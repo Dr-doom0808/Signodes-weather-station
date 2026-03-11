@@ -1,0 +1,26 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "18"
+  NPM_VERSION = "9"
+
+[dev]
+  targetPort = 3000
+  port = 8888
+  framework = "vite"
+
+# API redirects - proxy API requests to Netlify Functions (must come before SPA redirect)
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/sensorData"
+  status = 200
+  force = true
+
+# SPA redirects - must come after API redirects
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
