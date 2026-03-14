@@ -33,7 +33,8 @@ export const useScramble = (text: string) => {
       let output = '';
       let complete = 0;
       for (let i = 0, n = queue.current.length; i < n; i++) {
-        let { from, to, start, end, char } = queue.current[i];
+        const { from, to, start, end } = queue.current[i];
+        let { char } = queue.current[i];
         if (frame.current >= end) {
           complete++;
           output += to;
@@ -61,6 +62,7 @@ export const useScramble = (text: string) => {
     return () => {
       cancelAnimationFrame(frameRequest.current!);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text]);
 
   return { scrambledText: currentText };

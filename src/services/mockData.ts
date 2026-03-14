@@ -17,11 +17,11 @@ export const MOCK_SENSOR_DATA: SensorData[] = [
     humidity: 62,
     aqi25val: 45,
     aqi10val: 38,
-    uvIndex: 6,
-    uvRisk: 'High',
+    uvIndex: 5.2,
+    uvRisk: 'Moderate',
     rain: 'No',
-    mq_co: 0.8,
-    lastUpdated: new Date(Date.now() - 2 * 60000).toISOString(), // 2 minutes ago
+    mq_co: 55,   // realistic mW/cm² range (actual sensor output)
+    lastUpdated: new Date(Date.now() - 2 * 60000).toISOString(),
   },
   {
     id: 'node-2',
@@ -34,11 +34,11 @@ export const MOCK_SENSOR_DATA: SensorData[] = [
     humidity: 58,
     aqi25val: 52,
     aqi10val: 44,
-    uvIndex: 7,
-    uvRisk: 'High',
+    uvIndex: 6.8,
+    uvRisk: 'Moderate',
     rain: 'Yes',
-    mq_co: 1.2,
-    lastUpdated: new Date(Date.now() - 3 * 60000).toISOString(), // 3 minutes ago
+    mq_co: 62,
+    lastUpdated: new Date(Date.now() - 3 * 60000).toISOString(),
   },
   {
     id: 'node-3',
@@ -51,11 +51,11 @@ export const MOCK_SENSOR_DATA: SensorData[] = [
     humidity: 65,
     aqi25val: 42,
     aqi10val: 35,
-    uvIndex: 5,
+    uvIndex: 4.5,
     uvRisk: 'Moderate',
     rain: 'No',
-    mq_co: 0.5,
-    lastUpdated: new Date(Date.now() - 1 * 60000).toISOString(), // 1 minute ago
+    mq_co: 48,
+    lastUpdated: new Date(Date.now() - 1 * 60000).toISOString(),
   },
 ];
 
@@ -74,31 +74,31 @@ export function generateMockSensorData(): SensorData[] {
   return MOCK_SENSOR_DATA.map((sensor) => {
     // Generate temperature variation (±1°C) and round to 1 decimal
     const tempVariation = (Math.random() - 0.5) * 2;
-    const temperature = Number((sensor.temperature + tempVariation).toFixed(1));
+    const temperature = Number(((sensor.temperature ?? 25) + tempVariation).toFixed(1));
 
     // Generate humidity variation (±2.5%) and clamp 0-100, round to integer
     const humidityVariation = (Math.random() - 0.5) * 5;
-    const humidity = Math.round(clampValue(sensor.humidity + humidityVariation, 0, 100));
+    const humidity = Math.round(clampValue((sensor.humidity ?? 60) + humidityVariation, 0, 100));
 
     // Generate pressure variation and round to 2 decimals, clamp 900-1100 hPa
     const pressureVariation = (Math.random() - 0.5) * 0.5;
-    const pressure = Number((clampValue(sensor.pressure + pressureVariation, 900, 1100)).toFixed(2));
+    const pressure = Number((clampValue((sensor.pressure ?? 1013) + pressureVariation, 900, 1100)).toFixed(2));
 
     // Generate AQI 2.5 variation (±5) and clamp 0-500, round to integer
     const aqi25Variation = Math.floor((Math.random() - 0.5) * 10);
-    const aqi25val = Math.round(clampValue(sensor.aqi25val + aqi25Variation, 0, 500));
+    const aqi25val = Math.round(clampValue((sensor.aqi25val ?? 0) + aqi25Variation, 0, 500));
 
     // Generate AQI 10 variation (±4) and clamp 0-500, round to integer
     const aqi10Variation = Math.floor((Math.random() - 0.5) * 8);
-    const aqi10val = Math.round(clampValue(sensor.aqi10val + aqi10Variation, 0, 500));
+    const aqi10val = Math.round(clampValue((sensor.aqi10val ?? 0) + aqi10Variation, 0, 500));
 
-    // Generate UV Index variation and clamp 0-11, round to 1 decimal
-    const uvVariation = (Math.random() - 0.5) * 0.8;
-    const uvIndex = Number((clampValue(sensor.uvIndex + uvVariation, 0, 11)).toFixed(1));
+    // Generate UV Index variation and clamp 0-100 (mW/cm² scale), round to 1 decimal
+    const uvVariation = (Math.random() - 0.5) * 2;
+    const uvIndex = Number((clampValue((sensor.uvIndex ?? 5) + uvVariation, 0, 100)).toFixed(1));
 
-    // Generate CO variation and clamp 0-10 ppm, round to 2 decimals
-    const coVariation = (Math.random() - 0.5) * 0.3;
-    const mq_co = Number((Math.max(0, clampValue(sensor.mq_co + coVariation, 0, 10))).toFixed(2));
+    // Generate CO variation and clamp 0-100 (mW/cm² scale), round to 2 decimals
+    const coVariation = (Math.random() - 0.5) * 5;
+    const mq_co = Number((clampValue((sensor.mq_co ?? 50) + coVariation, 0, 100)).toFixed(2));
 
     return {
       ...sensor,
@@ -147,25 +147,25 @@ export function generateHistoricalMockData(days: number = 90): SensorData[] {
       // Generate data for each sensor node
       for (const sensor of MOCK_SENSOR_DATA) {
         const tempVariation = (Math.random() - 0.5) * 2 + seasonalTempVariation;
-        const temperature = Number((clampValue(sensor.temperature + tempVariation, -50, 50)).toFixed(1));
+        const temperature = Number((clampValue((sensor.temperature ?? 25) + tempVariation, -50, 50)).toFixed(1));
 
         const humidityVariation = (Math.random() - 0.5) * 5;
-        const humidity = Math.round(clampValue(sensor.humidity + humidityVariation, 0, 100));
+        const humidity = Math.round(clampValue((sensor.humidity ?? 60) + humidityVariation, 0, 100));
 
         const pressureVariation = (Math.random() - 0.5) * 0.5;
-        const pressure = Number((clampValue(sensor.pressure + pressureVariation, 900, 1100)).toFixed(2));
+        const pressure = Number((clampValue((sensor.pressure ?? 1013) + pressureVariation, 900, 1100)).toFixed(2));
 
         const aqi25Variation = Math.floor((Math.random() - 0.5) * 10) + seasonalAQIVariation;
-        const aqi25val = Math.round(clampValue(sensor.aqi25val + aqi25Variation, 0, 500));
+        const aqi25val = Math.round(clampValue((sensor.aqi25val ?? 0) + aqi25Variation, 0, 500));
 
         const aqi10Variation = Math.floor((Math.random() - 0.5) * 8) + seasonalAQIVariation * 0.8;
-        const aqi10val = Math.round(clampValue(sensor.aqi10val + aqi10Variation, 0, 500));
+        const aqi10val = Math.round(clampValue((sensor.aqi10val ?? 0) + aqi10Variation, 0, 500));
 
-        const uvVariation = (Math.random() - 0.5) * 0.8;
-        const uvIndex = Number((clampValue(sensor.uvIndex + uvVariation, 0, 11)).toFixed(1));
+        const uvVariation = (Math.random() - 0.5) * 2;
+        const uvIndex = Number((clampValue((sensor.uvIndex ?? 5) + uvVariation, 0, 100)).toFixed(1));
 
-        const coVariation = (Math.random() - 0.5) * 0.3;
-        const mq_co = Number((Math.max(0, clampValue(sensor.mq_co + coVariation, 0, 10))).toFixed(2));
+        const coVariation = (Math.random() - 0.5) * 5;
+        const mq_co = Number((clampValue((sensor.mq_co ?? 50) + coVariation, 0, 100)).toFixed(2));
 
         historicalData.push({
           ...sensor,

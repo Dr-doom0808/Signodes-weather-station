@@ -37,13 +37,7 @@ if (!GOOGLE_SCRIPT_URL) {
 
 // Get allowed origins from environment (comma-separated for multiple origins)
 const getAllowedOrigins = () => {
-  const origins = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()).filter(Boolean) || [];
-  
-  // Add localhost variants in development
-  if (process.env.NODE_ENV !== 'production') {
-    origins.push('http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173');
-  }
-  
+  const origins = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim().replace(/\/$/, '')).filter(Boolean) || [];
   return origins;
 };
 
@@ -67,13 +61,6 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json());
-
-/**
- * Health check endpoint
- */
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
 
 /**
  * Main sensor data API endpoint
@@ -153,8 +140,8 @@ app.get('/api/sensor-data', async (req, res) => {
               id: `node-${idx + 1}`,
               name: 'Node A',
               location: 'Main Campus',
-              latitude: parseFloat(row[10]?.toString().trim()) || 0,
-              longitude: parseFloat(row[11]?.toString().trim()) || 0,
+              latitude: parseFloat(row[7]?.toString().trim()) || 0,
+              longitude: parseFloat(row[8]?.toString().trim()) || 0,
               temperature: parseFloat(row[2]?.toString().trim()) || 0,
               pressure: parseFloat(row[1]?.toString().trim()) || 0,
               humidity: parseFloat(row[3]?.toString().trim()) || 0,
@@ -163,7 +150,7 @@ app.get('/api/sensor-data', async (req, res) => {
               uvIndex: parseFloat(row[14]?.toString().trim()) || 0,
               uvRisk: row[15]?.toString().trim() || 'Low',
               rain: row[13]?.toString().trim() === 'Yes' ? 'Yes' : 'No',
-              mq_co: parseFloat(row[16]?.toString().trim()) || 0,
+              mq_co: parseFloat(row[10]?.toString().trim()) || 0,
               lastUpdated: row[0]?.toString().trim() || new Date().toISOString(),
             };
             return obj;
@@ -191,8 +178,8 @@ app.get('/api/sensor-data', async (req, res) => {
               id: `node-${idx + 1}`,
               name: 'Node A',
               location: 'Main Campus',
-              latitude: parseFloat(cols[10]?.trim()) || 0,
-              longitude: parseFloat(cols[11]?.trim()) || 0,
+              latitude: parseFloat(cols[7]?.trim()) || 0,
+              longitude: parseFloat(cols[8]?.trim()) || 0,
               temperature: parseFloat(cols[2]?.trim()) || 0,
               pressure: parseFloat(cols[1]?.trim()) || 0,
               humidity: parseFloat(cols[3]?.trim()) || 0,
@@ -201,7 +188,7 @@ app.get('/api/sensor-data', async (req, res) => {
               uvIndex: parseFloat(cols[14]?.trim()) || 0,
               uvRisk: cols[15]?.trim() || 'Low',
               rain: cols[13]?.trim() === 'Yes' ? 'Yes' : 'No',
-              mq_co: parseFloat(cols[16]?.trim()) || 0,
+              mq_co: parseFloat(cols[10]?.trim()) || 0,
               lastUpdated: cols[0]?.trim() || new Date().toISOString(),
             };
           } catch (error) {
@@ -262,9 +249,25 @@ app.use((req, res) => {
 /**
  * Start the server
  */
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log('Health check: GET /health');
   console.log('Sensor API: GET /api/sensor-data');
 });
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`\n❌ Port ${PORT} is already in use!`);
+    console.error(`   Another server instance may be running.`);
+    console.error(`   Run: kill $(lsof -ti :${PORT}) to free the port, then restart.\n`);
+    process.exit(1);
+  } else {
+    console.error('Server error:', err);
+    process.exit(1);
+  }
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => { server.close(() => process.exit(0)); });
+process.on('SIGINT',  () => { server.close(() => process.exit(0)); });

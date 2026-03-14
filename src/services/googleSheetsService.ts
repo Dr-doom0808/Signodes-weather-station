@@ -4,24 +4,27 @@
  * Falls back to mock data in development when API is unavailable
  */
 
-// ✅ Sensor Data Interface
-export interface SensorData {
-  id: string;
-  name: string;
-  location: string;
-  latitude: number; // GPS latitude
-  longitude: number; // GPS longitude
-  temperature: number; // DHTtemp_C
-  pressure: number; // BMPpressure_hPa
-  humidity: number; // DHThumid_percent
-  aqi25val: number; // AQI PM2.5
-  aqi10val: number; // AQI PM10
-  uvIndex: number; // UV Index (0-10+ scale)
-  uvRisk: string; // UV Risk level (Low/Moderate/High/Very High/Extreme)
-  rain: string; // Yes/No
-  mq_co: number; // MQ-7 Carbon Monoxide sensor (ppm)
-  lastUpdated: string; // ISO datetime string
-}
+import { z } from 'zod';
+
+export const SensorDataSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  location: z.string(),
+  latitude: z.number().nullable(),
+  longitude: z.number().nullable(),
+  temperature: z.number().nullable(),
+  pressure: z.number().nullable(),
+  humidity: z.number().nullable(),
+  aqi25val: z.number().nullable(),
+  aqi10val: z.number().nullable(),
+  uvIndex: z.number().nullable(),
+  uvRisk: z.string().nullable(),
+  rain: z.string().nullable(),
+  mq_co: z.number().nullable(),
+  lastUpdated: z.string().nullable(),
+});
+
+export type SensorData = z.infer<typeof SensorDataSchema>;
 
 import { API_BASE } from '../config/api';
 import { generateMockSensorData, generateHistoricalMockData } from './mockData';
@@ -30,7 +33,6 @@ import { generateMockSensorData, generateHistoricalMockData } from './mockData';
 const API_URL = `${API_BASE}`;
 const REQUEST_TIMEOUT = 30000; // 30 seconds
 const USE_MOCK_DATA = import.meta.env.MODE === 'development' && import.meta.env.VITE_USE_MOCK_DATA === 'true';
-const FORCE_REAL_API = import.meta.env.MODE === 'development' && import.meta.env.VITE_USE_MOCK_DATA === 'false';
 
 /**
  * Fetch request with timeout
@@ -69,33 +71,12 @@ async function fetchWithTimeout(
   }
 }
 
-/**
- * Validate sensor data object
- * @param {any} data - Data to validate
- * @returns {boolean} - True if data is valid SensorData
- */
-function isValidSensorData(data: any): data is SensorData {
-  const requiredFields = [
-    'id',
-    'name',
-    'location',
-    'temperature',
-    'humidity',
-    'pressure',
-    'aqi25val',
-    'aqi10val',
-    'uvIndex',
-    'uvRisk',
-    'rain',
-    'mq_co',
-    'lastUpdated',
-  ];
-
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    requiredFields.every((field) => field in data)
-  );
+function isValidSensorData(data: unknown): data is SensorData {
+  const result = SensorDataSchema.safeParse(data);
+  if (!result.success) {
+    console.warn('[Validation Failed]', result.error);
+  }
+  return result.success;
 }
 
 /**
@@ -147,7 +128,7 @@ export async function fetchSensorData(): Promise<SensorData[]> {
 
       console.log(`[fetchSensorData] Validated ${validData.length} sensor records`);
       allData = validData;
-    } catch (err1) {
+    } catch {
       console.warn('[fetchSensorData] Failed with readrange100000, trying alternate endpoint...');
       
       // Fallback: Try with read endpoint which might return all available data
@@ -164,7 +145,7 @@ export async function fetchSensorData(): Promise<SensorData[]> {
             allData = validData;
           }
         }
-      } catch (err2) {
+      } catch {
         console.warn('[fetchSensorData] readall endpoint also failed');
       }
     }
@@ -187,6 +168,80 @@ export async function fetchSensorData(): Promise<SensorData[]> {
 
     throw new Error(`Failed to fetch sensor data: ${errorMessage}`);
   }
+}
+
+/**
+ * Fetch ALL historical sensor data using chunked requests of 5000 records at a time.
+ * This avoids Google Apps Script timeouts that occur with very large single requests.
+ * @param {function} onProgress - Optional callback called after each chunk with running total
+ * @returns {Promise<SensorData[]>} - All historical sensor records
+ */
+export async function fetchAllHistoricalData(
+  onProgress?: (loaded: number) => void
+): Promise<SensorData[]> {
+  const CHUNK_SIZE = 5000;
+  const allData: SensorData[] = [];
+  const seen = new Set<string>();
+
+  if (USE_MOCK_DATA) {
+    console.log('[fetchAllHistoricalData] Using mock data');
+    return generateHistoricalMockData(192);
+  }
+
+  let hasMore = true;
+  let attempt = 0;
+  const MAX_CHUNKS = 20; // safety cap: 20 × 5000 = 100 000 rows max
+
+  while (hasMore && attempt < MAX_CHUNKS) {
+    attempt++;
+    const chunkCount = CHUNK_SIZE * attempt;
+    console.log(`[fetchAllHistoricalData] Fetching chunk ${attempt}: readrange${chunkCount}`);
+
+    try {
+      const response = await fetchWithTimeout(`${API_URL}?sts=readrange${chunkCount}`, { method: 'GET' }, 35000);
+
+      if (!response.ok) {
+        console.warn(`[fetchAllHistoricalData] Chunk ${attempt} returned ${response.status}, stopping.`);
+        break;
+      }
+
+      const data = await response.json();
+      if (!Array.isArray(data) || data.length === 0) break;
+
+      const valid = data.filter((item) => isValidSensorData(item));
+
+      // Add only new records (de-duplicate by lastUpdated)
+      let newCount = 0;
+      for (const row of valid) {
+        const key = row.lastUpdated ?? '';
+        if (!seen.has(key)) {
+          seen.add(key);
+          allData.push(row);
+          newCount++;
+        }
+      }
+
+      console.log(`[fetchAllHistoricalData] Chunk ${attempt}: got ${valid.length} valid, ${newCount} new. Total: ${allData.length}`);
+      if (onProgress) onProgress(allData.length);
+
+      // If the API returned fewer than the full chunk size, we've reached the end
+      if (valid.length < CHUNK_SIZE) {
+        hasMore = false;
+        console.log('[fetchAllHistoricalData] Reached end of data.');
+      }
+    } catch (err) {
+      console.error(`[fetchAllHistoricalData] Chunk ${attempt} failed:`, err);
+      break;
+    }
+  }
+
+  if (allData.length === 0 && import.meta.env.MODE === 'development') {
+    console.warn('[fetchAllHistoricalData] No data received — using mock fallback');
+    return generateHistoricalMockData(192);
+  }
+
+  console.log(`[fetchAllHistoricalData] Done. Total records: ${allData.length}`);
+  return allData;
 }
 
 /**

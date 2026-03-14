@@ -106,13 +106,13 @@ export function formatHumidityWithBounds(humidity: number | undefined | null): s
 }
 
 /**
- * Format UV Index for display, ensuring it stays within 0-11+ range
- * @param uvIndex - UV Index value
- * @returns Clamped and formatted UV Index string
+ * Format UV sensor value for display (0-100 mW/cm² range)
+ * @param uvIndex - UV sensor value (0-100 mW/cm²)
+ * @returns Clamped and formatted UV value string
  */
 export function formatUVIndexWithBounds(uvIndex: number | undefined | null): string {
   if (uvIndex === undefined || uvIndex === null) return 'N/A';
-  const clamped = clampValue(uvIndex, 0, 11);
+  const clamped = clampValue(uvIndex, 0, 100);
   return Number(clamped).toFixed(1);
 }
 

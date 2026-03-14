@@ -9,9 +9,9 @@ import {
   formatPressureWithBounds, 
   formatAQIWithBounds, 
   formatUVIndexWithBounds, 
-  formatCOLevelWithBounds,
   formatCoordinateCompact
 } from '../../utils/sensorFormatting';
+import { coToPollutionPercent, getCOPollutionCategory } from '../../utils/sensorCalibration';
 
 interface NodeCardProps {
   node: NodeData;
@@ -25,7 +25,7 @@ const NodeCard: React.FC<NodeCardProps> = ({ node, isActive, onToggle }) => {
   // Determine if node is online based on lastUpdated
   const isOnline = node.lastUpdated && node.lastUpdated !== 'N/A' ? (() => {
     try {
-      const lastUpdated = new Date(node.lastUpdated);
+      const lastUpdated = new Date(node.lastUpdated.replace('_', 'T'));
       const now = new Date();
       const OFFLINE_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
       return (now.getTime() - lastUpdated.getTime()) < OFFLINE_THRESHOLD_MS;
@@ -88,208 +88,229 @@ const NodeCard: React.FC<NodeCardProps> = ({ node, isActive, onToggle }) => {
         minute: '2-digit',
         hour12: true
       });
-    } catch (e) {
+    } catch {
       return 'Unknown';
     }
   };
 
   return (
     <div 
-      className={`${darkMode ? 'bg-primary-800 border-primary-700' : 'bg-white border-gray-100'} rounded-xl shadow-md overflow-hidden transition-all duration-300 border ${isActive ? 'ring-2 ring-blue-500' : 'hover:shadow-lg'}`}
+      className={`relative overflow-hidden ${darkMode ? 'bg-slate-800/90 border-slate-700/50' : 'bg-white border-slate-200'} rounded-2xl shadow-lg transition-all duration-300 border ${isActive ? 'ring-2 ring-sky-500 shadow-sky-900/20' : 'hover:shadow-xl hover:-translate-y-1'}`}
+      style={{ backdropFilter: 'blur(12px)' }}
       role="article"
-      aria-labelledby={`node-title-${node.nodeId}`}
+      aria-labelledby={`node-title-${node.id}`}
     >
+      {/* Node Status Top Border Accent */}
+      <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-current to-transparent opacity-50 ${isOnline ? 'from-emerald-500/0 via-emerald-500 to-emerald-500/0' : 'from-slate-500/0 via-slate-500 to-slate-500/0'}`}></div>
+
       {/* Header */}
       <div 
-        className="p-4 cursor-pointer flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
+        className="p-5 cursor-pointer flex justify-between items-center focus:outline-none"
         onClick={onToggle}
         onKeyDown={(e) => e.key === 'Enter' && onToggle()}
         tabIndex={0}
         role="button"
         aria-expanded={isActive}
-        aria-controls={`node-content-${node.nodeId}`}
+        aria-controls={`node-content-${node.id}`}
       >
-        <div className="flex items-center space-x-3">
-          <div className={`p-2 rounded-lg ${node.isOnline ? 'bg-green-100' : 'bg-gray-100'}`}>
-            <Server className={`w-5 h-5 ${getStatusColor()}`} />
+        <div className="flex items-center space-x-4">
+          <div className={`p-3 rounded-xl border ${isOnline ? (darkMode ? 'bg-emerald-900/20 border-emerald-800/50' : 'bg-emerald-50 border-emerald-200') : (darkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200')}`}>
+            <Server className={`w-6 h-6 ${getStatusColor()}`} />
           </div>
           <div>
-            <h3 id={`node-title-${node.nodeId}`} className={`font-semibold ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>{node.nodeName || 'Unnamed Node'}</h3>
-            <p className={`text-sm ${darkMode ? 'text-gray-200' : 'text-gray-500'}`}>{node.nodeLocation || 'Location not specified'}</p>
+            <h3 id={`node-title-${node.id}`} className={`font-semibold text-lg tracking-tight ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>{node.name || 'Unnamed Node'}</h3>
+            <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{node.location || 'Location not specified'}</p>
           </div>
         </div>
         <div className="flex items-center">
-          <span className={`text-xs px-2 py-1 rounded-full ${node.isOnline ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-            {node.isOnline ? 'Online' : 'Offline'}
-          </span>
-          {isActive ? 
-            <ChevronUp className="ml-2 w-5 h-5 text-gray-400" /> : 
-            <ChevronDown className="ml-2 w-5 h-5 text-gray-400" />
-          }
+          <div className="flex items-center mr-3">
+             <div 
+                className={`w-2 h-2 rounded-full mr-2 ${isOnline ? (darkMode ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'bg-emerald-500') : 'bg-slate-500'} ${isOnline ? 'animate-pulse' : ''}`}
+             ></div>
+             <span className={`text-xs font-semibold uppercase tracking-wider ${isOnline ? (darkMode ? 'text-emerald-400' : 'text-emerald-600') : (darkMode ? 'text-slate-400' : 'text-slate-500')}`}>
+               {isOnline ? 'Active' : 'Offline'}
+             </span>
+          </div>
+          <div className={`p-1.5 rounded-full ${darkMode ? 'bg-slate-700/50 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+            {isActive ? 
+              <ChevronUp className="w-5 h-5" /> : 
+              <ChevronDown className="w-5 h-5" />
+            }
+          </div>
         </div>
       </div>
 
       {/* Expanded Content */}
       {isActive && (
-        <div id={`node-content-${node.nodeId}`} className="px-4 pb-4 space-y-4">
+        <div id={`node-content-${node.id}`} className="px-5 pb-6 space-y-5 animate-slide-up" style={{ animationDuration: '0.3s' }}>
 
           {/* Node Information */}
           <div 
-            className={`${darkMode ? 'bg-primary-700 border-primary-600' : 'bg-gray-50 border-gray-200'} rounded-lg p-3 space-y-2 border`}
+            className={`rounded-xl p-4 space-y-3 border ${darkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-slate-50 border-slate-200'}`}
             role="group"
             aria-label="Node information"
           >
-            <div className={`flex items-center text-sm ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-              <MapPin className={`w-4 h-4 mr-2 ${darkMode ? 'text-gray-300' : 'text-gray-500'} flex-shrink-0`} />
-              <span className="truncate">Location: {node.nodeLocation || 'N/A'}</span>
+            <div className={`flex items-center text-sm ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+              <MapPin className={`w-4 h-4 mr-2.5 ${darkMode ? 'text-slate-400' : 'text-slate-500'} flex-shrink-0`} />
+              <span className="truncate">Location: {node.location || 'N/A'}</span>
             </div>
             {(node.latitude && node.longitude) && (
-              <div className={`flex items-center text-sm ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                <Navigation className={`w-4 h-4 mr-2 ${darkMode ? 'text-gray-300' : 'text-gray-500'} flex-shrink-0`} />
-                <span>Coordinates: {formatCoordinateCompact(node.latitude)}, {formatCoordinateCompact(node.longitude)}</span>
+              <div className={`flex items-center text-sm ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                <Navigation className={`w-4 h-4 mr-2.5 ${darkMode ? 'text-slate-400' : 'text-slate-500'} flex-shrink-0`} />
+                <span>Coordinates: <span className="font-mono bg-slate-800/50 px-1.5 py-0.5 rounded text-xs">{formatCoordinateCompact(node.latitude)}, {formatCoordinateCompact(node.longitude)}</span></span>
               </div>
             )}
-            <div className={`flex items-center text-sm ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-              <Calendar className={`w-4 h-4 mr-2 ${darkMode ? 'text-gray-300' : 'text-gray-500'} flex-shrink-0`} />
-              <span>Last Updated: {node.lastUpdated ? formatDate(node.lastUpdated) : 'N/A'}</span>
+            <div className={`flex items-center text-sm ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+              <Calendar className={`w-4 h-4 mr-2.5 ${darkMode ? 'text-slate-400' : 'text-slate-500'} flex-shrink-0`} />
+              <span>Last Updated: <span className="font-medium text-slate-200">{node.lastUpdated ? formatDate(node.lastUpdated) : 'N/A'}</span></span>
             </div>
           </div>
 
           {/* Environmental Data Grid */}
           <div 
-            className="grid grid-cols-2 gap-3" 
+            className="grid grid-cols-2 gap-4" 
             role="group" 
             aria-label="Environmental data readings"
           >
             {/* Temperature */}
             <div 
-              className={`${darkMode ? 'bg-blue-900/30 border-blue-800/50' : 'bg-blue-50 border-blue-100'} rounded-lg p-3 border transition-colors duration-300 focus-within:ring-2 focus-within:ring-blue-500`}
+              className={`${darkMode ? 'bg-rose-900/20 border-rose-800/40' : 'bg-rose-50 border-rose-100'} rounded-xl p-4 border transition-colors duration-300 hover:bg-rose-900/30`}
               role="group"
               aria-label="Temperature reading"
               tabIndex={0}
             >
-              <div className={`flex items-center space-x-2 ${darkMode ? 'text-blue-400' : 'text-blue-700'}`}>
+              <div className={`flex items-center space-x-2.5 ${darkMode ? 'text-rose-400' : 'text-rose-600'} mb-2`}>
                 <Thermometer className="w-4 h-4 flex-shrink-0" />
-                <span className="text-sm font-medium truncate">Temperature</span>
+                <span className="text-xs font-semibold uppercase tracking-wider truncate">Temperature</span>
               </div>
-              <div className={`text-xl font-bold mt-1 ${darkMode ? 'text-white' : ''}`}>
+              <div className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-slate-900'} tracking-tight`}>
                 {node.temperature !== undefined && node.temperature !== null ? `${formatTemperatureWithBounds(node.temperature)}°C` : 'N/A'}
               </div>
             </div>
 
             {/* Humidity */}
             <div 
-              className={`${darkMode ? 'bg-cyan-900/30 border-cyan-800/50' : 'bg-cyan-50 border-cyan-100'} rounded-lg p-3 border transition-colors duration-300 focus-within:ring-2 focus-within:ring-cyan-500`}
+              className={`${darkMode ? 'bg-sky-900/20 border-sky-800/40' : 'bg-sky-50 border-sky-100'} rounded-xl p-4 border transition-colors duration-300 hover:bg-sky-900/30`}
               role="group"
               aria-label="Humidity reading"
               tabIndex={0}
             >
-              <div className={`flex items-center space-x-2 ${darkMode ? 'text-cyan-400' : 'text-cyan-700'}`}>
+              <div className={`flex items-center space-x-2.5 ${darkMode ? 'text-sky-400' : 'text-sky-600'} mb-2`}>
                 <Droplets className="w-4 h-4 flex-shrink-0" />
-                <span className="text-sm font-medium">Humidity</span>
+                <span className="text-xs font-semibold uppercase tracking-wider truncate">Humidity</span>
               </div>
-              <div className={`text-xl font-bold mt-1 ${darkMode ? 'text-white' : ''}`}>
+              <div className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-slate-900'} tracking-tight`}>
                 {node.humidity !== undefined && node.humidity !== null ? `${formatHumidityWithBounds(node.humidity)}%` : 'N/A'}
               </div>
             </div>
 
             {/* Air Pressure */}
             <div 
-              className={`${darkMode ? 'bg-indigo-900/30 border-indigo-800/50' : 'bg-indigo-50 border-indigo-100'} rounded-lg p-3 border transition-colors duration-300 focus-within:ring-2 focus-within:ring-indigo-500`}
+              className={`${darkMode ? 'bg-indigo-900/20 border-indigo-800/40' : 'bg-indigo-50 border-indigo-100'} rounded-xl p-4 border transition-colors duration-300 hover:bg-indigo-900/30`}
               role="group"
               aria-label="Air pressure reading"
               tabIndex={0}
             >
-              <div className={`flex items-center space-x-2 ${darkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>
+              <div className={`flex items-center space-x-2.5 ${darkMode ? 'text-indigo-400' : 'text-indigo-600'} mb-2`}>
                 <Gauge className="w-4 h-4 flex-shrink-0" />
-                <span className="text-sm font-medium">Air Pressure</span>
+                <span className="text-xs font-semibold uppercase tracking-wider truncate">Air Pressure</span>
               </div>
-              <div className={`text-xl font-bold mt-1 ${darkMode ? 'text-white' : ''}`}>
+              <div className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-slate-900'} tracking-tight`}>
                 {node.pressure !== undefined && node.pressure !== null ? `${formatPressureWithBounds(node.pressure)} hPa` : 'N/A'}
               </div>
             </div>
 
             {/* Rain Status */}
             <div 
-              className={`${darkMode ? 'bg-purple-900/30 border-purple-800/50' : 'bg-purple-50 border-purple-100'} rounded-lg p-3 border transition-colors duration-300 focus-within:ring-2 focus-within:ring-purple-500`}
+              className={`${darkMode ? 'bg-indigo-900/20 border-indigo-800/40' : 'bg-slate-100 border-slate-200'} rounded-xl p-4 border transition-colors duration-300 hover:bg-indigo-900/30`}
               role="group"
               aria-label="Rain status reading"
               tabIndex={0}
             >
-              <div className={`flex items-center space-x-2 ${darkMode ? 'text-purple-400' : 'text-purple-700'}`}>
+              <div className={`flex items-center space-x-2.5 ${darkMode ? 'text-indigo-400' : 'text-slate-600'} mb-2`}>
                 <CloudRain className="w-4 h-4 flex-shrink-0" />
-                <span className="text-sm font-medium">Rain Status</span>
+                <span className="text-xs font-semibold uppercase tracking-wider truncate">Rain Status</span>
               </div>
-              <div className={`text-xl font-bold mt-1 capitalize ${darkMode ? 'text-white' : ''}`}>
+              <div className={`text-2xl font-bold capitalize ${darkMode ? 'text-white' : 'text-slate-900'} tracking-tight`}>
                 {node.rain?.toLowerCase() || 'N/A'}
               </div>
             </div>
 
             {/* AQI 2.5 */}
             <div 
-              className={`${darkMode ? 'bg-amber-900/30 border-amber-800/50' : 'bg-amber-50 border-amber-100'} rounded-lg p-3 border transition-colors duration-300 focus-within:ring-2 focus-within:ring-amber-500`}
+              className={`${darkMode ? 'bg-emerald-900/20 border-emerald-800/40' : 'bg-emerald-50 border-emerald-100'} rounded-xl p-4 border transition-colors duration-300 hover:bg-emerald-900/30`}
               role="group"
               aria-label="PM2.5 air quality reading"
               tabIndex={0}
             >
-              <div className={`flex items-center space-x-2 ${darkMode ? 'text-amber-400' : 'text-amber-700'}`}>
+              <div className={`flex items-center space-x-2.5 ${darkMode ? 'text-emerald-400' : 'text-emerald-600'} mb-2`}>
                 <Activity className="w-4 h-4 flex-shrink-0" />
-                <span className="text-sm font-medium">PM2.5 (AQI)</span>
+                <span className="text-xs font-semibold uppercase tracking-wider truncate">PM2.5 (AQI)</span>
               </div>
-              <div className={`text-xl font-bold mt-1 ${darkMode ? 'text-white' : ''}`}>
+              <div className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-slate-900'} tracking-tight`}>
                 {node.aqi25val !== undefined && node.aqi25val !== null ? formatAQIWithBounds(node.aqi25val) : 'N/A'}
               </div>
             </div>
 
             {/* AQI 10 */}
             <div 
-              className={`${darkMode ? 'bg-red-900/30 border-red-800/50' : 'bg-red-50 border-red-100'} rounded-lg p-3 border transition-colors duration-300 focus-within:ring-2 focus-within:ring-red-500`}
+              className={`${darkMode ? 'bg-amber-900/20 border-amber-800/40' : 'bg-amber-50 border-amber-100'} rounded-xl p-4 border transition-colors duration-300 hover:bg-amber-900/30`}
               role="group"
               aria-label="PM10 air quality reading"
               tabIndex={0}
             >
-              <div className={`flex items-center space-x-2 ${darkMode ? 'text-red-400' : 'text-red-700'}`}>
+              <div className={`flex items-center space-x-2.5 ${darkMode ? 'text-amber-400' : 'text-amber-600'} mb-2`}>
                 <Activity className="w-4 h-4 flex-shrink-0" />
-                <span className="text-sm font-medium">PM10 (AQI)</span>
+                <span className="text-xs font-semibold uppercase tracking-wider truncate">PM10 (AQI)</span>
               </div>
-              <div className={`text-xl font-bold mt-1 ${darkMode ? 'text-white' : ''}`}>
+              <div className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-slate-900'} tracking-tight`}>
                 {node.aqi10val !== undefined && node.aqi10val !== null ? formatAQIWithBounds(node.aqi10val) : 'N/A'}
               </div>
             </div>
 
             {/* UV Index */}
             <div 
-              className={`${darkMode ? 'bg-yellow-900/30 border-yellow-800/50' : 'bg-yellow-50 border-yellow-100'} rounded-lg p-3 border transition-colors duration-300 focus-within:ring-2 focus-within:ring-yellow-500`}
+              className={`${darkMode ? 'bg-yellow-900/20 border-yellow-800/40' : 'bg-yellow-50 border-yellow-100'} rounded-xl p-4 border transition-colors duration-300 hover:bg-yellow-900/30`}
               role="group"
               aria-label="UV index reading"
               tabIndex={0}
             >
-              <div className={`flex items-center space-x-2 ${darkMode ? 'text-yellow-400' : 'text-yellow-700'}`}>
+              <div className={`flex items-center space-x-2.5 ${darkMode ? 'text-yellow-400' : 'text-yellow-600'} mb-2`}>
                 <Sun className="w-4 h-4 flex-shrink-0" />
-                <span className="text-sm font-medium">UV Index</span>
+                <span className="text-xs font-semibold uppercase tracking-wider truncate">UV Index</span>
               </div>
-              <div className={`text-xl font-bold mt-1 ${darkMode ? 'text-white' : ''}`}>
-                {node.uvIndex !== undefined && node.uvIndex !== null ? formatUVIndexWithBounds(node.uvIndex) : 'N/A'} {node.uvRisk && `(${node.uvRisk})`}
+              <div className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-slate-900'} tracking-tight`}>
+                {node.uvIndex !== undefined && node.uvIndex !== null ? formatUVIndexWithBounds(node.uvIndex) : 'N/A'} <span className="text-sm font-normal text-slate-400 ml-1">{node.uvRisk && `(${node.uvRisk})`}</span>
               </div>
             </div>
 
-            {/* Carbon Monoxide */}
+            {/* Carbon Monoxide Pollution Index */}
             <div 
-              className={`${darkMode ? 'bg-purple-900/30 border-purple-800/50' : 'bg-purple-50 border-purple-100'} rounded-lg p-3 border transition-colors duration-300 focus-within:ring-2 focus-within:ring-purple-500`}
+              className={`${darkMode ? 'bg-rose-900/20 border-rose-800/40' : 'bg-rose-50 border-rose-100'} rounded-xl p-4 border transition-colors duration-300 hover:bg-rose-900/30`}
               role="group"
-              aria-label="Carbon monoxide reading"
+              aria-label="Carbon monoxide pollution index"
               tabIndex={0}
             >
-              <div className={`flex items-center space-x-2 ${darkMode ? 'text-purple-400' : 'text-purple-700'}`}>
+              <div className={`flex items-center space-x-2.5 ${darkMode ? 'text-rose-400' : 'text-rose-600'} mb-2`}>
                 <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                <span className="text-sm font-medium">CO Level</span>
+                <span className="text-xs font-semibold uppercase tracking-wider truncate">CO Index</span>
               </div>
-              <div className={`text-xl font-bold mt-1 ${darkMode ? 'text-white' : ''}`}>
-                {node.mq_co !== undefined && node.mq_co !== null ? `${formatCOLevelWithBounds(node.mq_co)} ppm` : 'N/A'}
-              </div>
+              {node.mq_co !== undefined && node.mq_co !== null ? (() => {
+                const pct = coToPollutionPercent(Number(node.mq_co));
+                const cat = getCOPollutionCategory(pct);
+                return (
+                  <>
+                    <div className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-slate-900'} tracking-tight`}>
+                      {pct.toFixed(1)}%
+                    </div>
+                    <div className={`flex items-center gap-1.5 mt-1`}>
+                      <span className={`w-2 h-2 rounded-full ${cat.dotColor} inline-block`} />
+                      <span className={`text-xs ${darkMode ? cat.textColor : 'text-slate-600'}`}>{cat.label}</span>
+                    </div>
+                  </>
+                );
+              })() : <div className="text-2xl font-bold text-slate-500">N/A</div>}
             </div>
-            
-
           </div>
         </div>
       )}
@@ -306,27 +327,24 @@ const NodeGrid: React.FC = () => {
   // Map sensor nodes to our format
   const networkNodes = [
     {
-      nodeId: 'node-a',
-      nodeName: 'Node A',
-      nodeLocation: 'Block A - Main Building',
-      isOnline: true,
       ...(sensorNodes[0] || {}),
+      id: sensorNodes[0]?.id || 'node-a',
+      name: sensorNodes[0]?.name || 'Node A',
+      location: sensorNodes[0]?.location || 'Block A - Main Building',
       lastUpdated: sensorNodes[0]?.lastUpdated || new Date().toISOString()
     },
     {
-      nodeId: 'node-b',
-      nodeName: 'Node B',
-      nodeLocation: 'Block B - Library',
-      isOnline: false,
       ...(sensorNodes[1] || {}),
+      id: sensorNodes[1]?.id || 'node-b',
+      name: sensorNodes[1]?.name || 'Node B',
+      location: sensorNodes[1]?.location || 'Block B - Library',
       lastUpdated: sensorNodes[1]?.lastUpdated || new Date().toISOString()
     },
     {
-      nodeId: 'node-c',
-      nodeName: 'Node C',
-      nodeLocation: 'Block D - Cafeteria',
-      isOnline: false,
       ...(sensorNodes[2] || {}),
+      id: sensorNodes[2]?.id || 'node-c',
+      name: sensorNodes[2]?.name || 'Node C',
+      location: sensorNodes[2]?.location || 'Block D - Cafeteria',
       lastUpdated: sensorNodes[2]?.lastUpdated || new Date().toISOString()
     }
   ];
@@ -363,15 +381,17 @@ const NodeGrid: React.FC = () => {
   
   return (
     <section 
-      className={`py-12 ${darkMode ? 'bg-gradient-to-br from-primary-950 to-primary-900 text-gray-100' : 'bg-gradient-to-br from-slate-50 to-blue-50'}`}
+      id="network-status"
+      className={`py-16 ${darkMode ? 'bg-slate-900/50 text-slate-100 relative' : 'bg-slate-50 text-slate-900 relative'}`}
       role="region"
       aria-labelledby="sensor-network-title"
     >
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-10">
-          <h2 id="sensor-network-title" className={`text-3xl font-bold ${darkMode ? 'text-gray-100' : 'text-gray-900'} mb-2`}>Campus Sensor Network</h2>
-          <p className={`text-lg ${darkMode ? 'text-gray-200' : 'text-gray-600'} max-w-2xl mx-auto`}>
-            Interactive overview of all sensor nodes across the NIET campus
+      <div className={`absolute inset-0 border-t ${darkMode ? 'border-slate-800/50' : 'border-slate-200'} pointer-events-none`}></div>
+      <div className="container mx-auto px-4 relative z-10">
+        <div className="text-center mb-12">
+          <h2 id="sensor-network-title" className={`text-3xl font-bold tracking-tight ${darkMode ? 'text-slate-100' : 'text-slate-900'} mb-3`}>Campus Sensor Network</h2>
+          <p className={`text-lg ${darkMode ? 'text-slate-400' : 'text-slate-600'} max-w-2xl mx-auto`}>
+            Interactive overview of all sensor nodes across the NIET campus. Click a node to view its detailed environmental readings.
           </p>
         </div>
 
@@ -382,10 +402,10 @@ const NodeGrid: React.FC = () => {
         >
           {networkNodes.map((node) => (
             <NodeCard
-              key={node.nodeId}
-              node={node}
-              isActive={expandedNode === node.nodeId}
-              onToggle={() => toggleNode(node.nodeId)}
+              key={node.id}
+              node={node as NodeData}
+              isActive={expandedNode === node.id}
+              onToggle={() => toggleNode(node.id)}
             />
           ))}
         </div>

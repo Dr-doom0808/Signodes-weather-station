@@ -9642,7 +9642,7 @@ var require_get_intrinsic = __commonJS({
       "%encodeURIComponent%": encodeURIComponent,
       "%Error%": $Error,
       "%eval%": eval,
-      // eslint-disable-line no-eval
+       
       "%EvalError%": $EvalError,
       "%Float16Array%": typeof Float16Array === "undefined" ? undefined2 : Float16Array,
       "%Float32Array%": typeof Float32Array === "undefined" ? undefined2 : Float32Array,
@@ -12090,7 +12090,7 @@ var require_axios = __commonJS({
       "ERR_CANCELED",
       "ERR_NOT_SUPPORT",
       "ERR_INVALID_URL"
-      // eslint-disable-next-line func-names
+       
     ].forEach((code) => {
       descriptors[code] = { value: code };
     });
@@ -12175,7 +12175,7 @@ var require_axios = __commonJS({
             key = removeBrackets(key);
             arr.forEach(function each(el, index) {
               !(utils$1.isUndefined(el) || el === null) && formData.append(
-                // eslint-disable-next-line no-nested-ternary
+                 
                 indexes === true ? renderKey([key], index, dots) : indexes === null ? key : key + "[]",
                 convertValue(el)
               );
@@ -12380,7 +12380,7 @@ var require_axios = __commonJS({
     var _navigator = typeof navigator === "object" && navigator || void 0;
     var hasStandardBrowserEnv = hasBrowserEnv && (!_navigator || ["ReactNative", "NativeScript", "NS"].indexOf(_navigator.product) < 0);
     var hasStandardBrowserWebWorkerEnv = (() => {
-      return typeof WorkerGlobalScope !== "undefined" && // eslint-disable-next-line no-undef
+      return typeof WorkerGlobalScope !== "undefined" &&  
       self instanceof WorkerGlobalScope && typeof self.importScripts === "function";
     })();
     var origin = hasBrowserEnv && window.location.href || "http://localhost";

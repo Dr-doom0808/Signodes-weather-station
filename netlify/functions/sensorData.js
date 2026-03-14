@@ -22,7 +22,9 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '').split(',').filter(Bo
  * @returns {string|undefined} - Safe origin or undefined
  */
 function getAllowedOrigin(origin) {
-  if (!origin) return undefined;
+  if (!origin) return '*';
+  // If ALLOWED_ORIGINS is configured, restrict to that list; otherwise allow all
+  if (ALLOWED_ORIGINS.length === 0) return '*';
   return ALLOWED_ORIGINS.includes(origin) ? origin : undefined;
 }
 
@@ -47,17 +49,17 @@ function parseSensorData(textData) {
               id: `node-${index + 1}`,
               name: 'Node A',
               location: 'Main Campus',
-              latitude: parseFloat(row[10]) || 0,
-              longitude: parseFloat(row[11]) || 0,
+              latitude: parseFloat(row[7]) || 0,
+              longitude: parseFloat(row[8]) || 0,
               temperature: parseFloat(row[2]) || 0,
               pressure: parseFloat(row[1]) || 0,
               humidity: parseFloat(row[3]) || 0,
               aqi25val: parseFloat(row[6]) || 0,
               aqi10val: parseFloat(row[5]) || 0,
-              uvIndex: parseFloat(row[14]) || 0,
-              uvRisk: getUVRisk(parseFloat(row[14]) || 0),
+              uvIndex: parseFloat(row[9]) || 0,
+              uvRisk: getUVRisk(parseFloat(row[9]) || 0),
               rain: row[13] === 'Yes' ? 'Yes' : 'No',
-              mq_co: parseFloat(row[16]) || 0,
+              mq_co: parseFloat(row[10]) || 0,
               lastUpdated: row[0] || new Date().toISOString(),
             };
           })
@@ -79,17 +81,17 @@ function parseSensorData(textData) {
           id: `node-${index + 1}`,
           name: 'Node A',
           location: 'Main Campus',
-          latitude: parseFloat(columns[10]?.trim()) || 0,
-          longitude: parseFloat(columns[11]?.trim()) || 0,
+          latitude: parseFloat(columns[7]?.trim()) || 0,
+          longitude: parseFloat(columns[8]?.trim()) || 0,
           temperature: parseFloat(columns[2]?.trim()) || 0,
           pressure: parseFloat(columns[1]?.trim()) || 0,
           humidity: parseFloat(columns[3]?.trim()) || 0,
           aqi25val: parseFloat(columns[6]?.trim()) || 0,
           aqi10val: parseFloat(columns[5]?.trim()) || 0,
-          uvIndex: parseFloat(columns[14]?.trim()) || 0,
-          uvRisk: getUVRisk(parseFloat(columns[14]?.trim()) || 0),
+          uvIndex: parseFloat(columns[9]?.trim()) || 0,
+          uvRisk: getUVRisk(parseFloat(columns[9]?.trim()) || 0),
           rain: columns[13]?.trim() === 'Yes' ? 'Yes' : 'No',
-          mq_co: parseFloat(columns[16]?.trim()) || 0,
+          mq_co: parseFloat(columns[10]?.trim()) || 0,
           lastUpdated: columns[0]?.trim() || new Date().toISOString(),
         };
       })

@@ -1,23 +1,8 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { useContext, useEffect, useState, useCallback } from 'react';
 import { fetchRecentSensorData } from '../services/googleSheetsService';
-
-// Import the SensorData type from the service
-import { SensorData } from '../services/googleSheetsService';
-
-// Alias SensorData as NodeData for backward compatibility
-export type NodeData = SensorData;
-
-interface NodesContextType {
-  nodes: NodeData[];
-  loading: boolean;
-  error: Error | null;
-}
-
-const NodesContext = createContext<NodesContextType>({
-  nodes: [],
-  loading: true,
-  error: null
-});
+import { NodesContext } from './nodes.context';
+import { NodeData, NodesContextType } from './nodes.types';
+export type { NodeData };
 
 export const NodesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [nodes, setNodes] = useState<NodeData[]>([]);
@@ -65,17 +50,17 @@ export const NodesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           id: `node-${letter}`,
           name: `Node ${letter}`,
           location: `Block ${letter}`,
-          latitude: 0,
-          longitude: 0,
-          temperature: 0,
-          pressure: 0,
-          humidity: 0,
-          aqi25val: 0,
-          aqi10val: 0,
-          uvIndex: 0,
+          latitude: null,
+          longitude: null,
+          temperature: null,
+          pressure: null,
+          humidity: null,
+          aqi25val: null,
+          aqi10val: null,
+          uvIndex: null,
           uvRisk: 'N/A',
           rain: 'N/A',
-          mq_co: 0,
+          mq_co: null,
           lastUpdated: 'N/A',
         });
 
@@ -147,6 +132,7 @@ export const NodesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useNodes = (): NodesContextType => {
   const context = useContext(NodesContext);
   return context;

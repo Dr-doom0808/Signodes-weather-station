@@ -66,7 +66,7 @@ export default defineConfig(({ mode }) => {
             return path;
           },
           // Enhanced error handling
-          configure: (proxy, options) => {
+          configure: (proxy) => {
             proxy.on('error', (err, req, res) => {
               console.error('[Proxy Error]', {
                 url: req.url,

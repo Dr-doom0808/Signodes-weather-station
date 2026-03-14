@@ -7,6 +7,18 @@ interface FooterProps {
 }
 
 const Footer: React.FC<FooterProps> = ({ darkMode = false, toggleDarkMode }) => {
+  const scrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    e.preventDefault();
+    if (id === '#') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    const element = document.querySelector(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <footer className={`${
       darkMode 
@@ -61,16 +73,17 @@ const Footer: React.FC<FooterProps> = ({ darkMode = false, toggleDarkMode }) => 
             <h3 className="text-lg font-bold text-white mb-4">Quick Links</h3>
             <ul className="space-y-3">
               {[
-                { name: 'Dashboard', icon: <Home className="w-4 h-4 mr-3 text-signodes-400" />, href: '#dashboard' },
-                { name: 'Campus Map', icon: <Map className="w-4 h-4 mr-3 text-signodes-400" />, href: '#map' },
-                { name: 'Live Data', icon: <Activity className="w-4 h-4 mr-3 text-signodes-400" />, href: '#live' },
-                { name: 'Historical Data', icon: <BarChart2 className="w-4 h-4 mr-3 text-signodes-400" />, href: '#history' },
-                { name: 'Network Status', icon: <Wifi className="w-4 h-4 mr-3 text-signodes-400" />, href: '#network' },
-                { name: 'Specifications', icon: <Cpu className="w-4 h-4 mr-3 text-signodes-400" />, href: '#specs' }
+                { name: 'Dashboard', icon: <Home className="w-4 h-4 mr-3 text-signodes-400" />, href: '#' },
+                { name: 'Campus Map', icon: <Map className="w-4 h-4 mr-3 text-signodes-400" />, href: '#campus-overview' },
+                { name: 'Live Data', icon: <Activity className="w-4 h-4 mr-3 text-signodes-400" />, href: '#sensor-data' },
+                { name: 'Historical Data', icon: <BarChart2 className="w-4 h-4 mr-3 text-signodes-400" />, href: '#historical-data' },
+                { name: 'Network Status', icon: <Wifi className="w-4 h-4 mr-3 text-signodes-400" />, href: '#network-status' },
+                { name: 'Specifications', icon: <Cpu className="w-4 h-4 mr-3 text-signodes-400" />, href: '#deployment' }
               ].map((link, index) => (
                 <li key={index}>
                   <a 
                     href={link.href}
+                    onClick={(e) => scrollToSection(e, link.href)}
                     className={`flex items-center ${darkMode ? 'text-gray-300 hover:text-gray-100' : 'text-primary-300 hover:text-white'} text-sm transition-colors group`}
                   >
                     {link.icon}

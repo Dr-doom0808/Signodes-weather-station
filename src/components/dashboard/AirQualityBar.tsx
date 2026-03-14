@@ -1,12 +1,21 @@
 import React from 'react';
 import { useNodes } from '../../context/NodesContext';
-import { Thermometer, Wind, AlertTriangle } from 'lucide-react';
+import { Thermometer, Wind, AlertTriangle, Zap } from 'lucide-react';
 import { useDarkMode } from '../../context/DarkModeContext';
+import { calculateRPI, computeCoBaseline } from '../../utils/sensorCalibration';
 
 const AirQualityBar: React.FC = () => {
   const { nodes } = useNodes();
   const { darkMode } = useDarkMode();
   const nodeData = nodes.length > 0 ? nodes[0] : null;
+
+  // Compute a dynamic clean-air baseline from all available node CO readings
+  const dynamicCoBaseline = (() => {
+    const allCo = nodes
+      .map(n => Number(n.mq_co))
+      .filter(v => v > 0 && isFinite(v));
+    return computeCoBaseline(allCo);
+  })();
 
   // Calculate overall AQI from PM2.5 and PM10
   const calculateOverallAQI = () => {
@@ -124,25 +133,42 @@ const AirQualityBar: React.FC = () => {
     <section className={`py-16 bg-gradient-to-r ${darkMode ? 'from-primary-900 to-primary-800' : aqiInfo.bgGradient} animate-fade-in`} aria-label="Air Quality Information">
       <div className="container mx-auto px-4">
         <div className="max-w-6xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-12 space-y-3 animate-slide-in-left" aria-labelledby="air-quality-heading">
-            <h2 id="air-quality-heading" className={`text-4xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'} transition-colors duration-300`}>Air Quality & Environmental Status</h2>
-            <p className={`${darkMode ? 'text-gray-300' : 'text-gray-600'} text-lg max-w-2xl mx-auto transition-colors duration-300`}>Real-time air quality monitoring with temperature-responsive indicators</p>
+          {/* Header - Hidden on Mobile for App-like feel */}
+          <div className="hidden md:block text-center mb-10 md:mb-12 space-y-2 md:space-y-3 animate-slide-in-left" aria-labelledby="air-quality-heading">
+            <h2 id="air-quality-heading" className={`text-3xl md:text-4xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'} transition-colors duration-300`}>Air Quality & Environmental Status</h2>
+            <p className={`${darkMode ? 'text-gray-300' : 'text-gray-600'} text-base md:text-lg max-w-2xl mx-auto transition-colors duration-300`}>Real-time air quality monitoring with temperature-responsive indicators</p>
           </div>
 
-          {/* Main Air Quality Bar */}
-          <div className={`${darkMode ? 'bg-primary-800/90 backdrop-blur-sm border border-primary-700' : 'bg-white/95 backdrop-blur-sm'} rounded-3xl shadow-card p-8 mb-10 transition-all duration-300 hover:shadow-glow animate-slide-up`}>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-center" role="region" aria-label="Air quality measurements">
+          {/* Main Air Quality Bar (Hero Card on Mobile) */}
+          <div className={`${darkMode ? 'bg-primary-800/90 backdrop-blur-sm border border-primary-700' : 'bg-white/95 backdrop-blur-sm'} rounded-3xl shadow-card p-5 md:p-8 mb-6 md:mb-10 transition-all duration-300 hover:shadow-glow animate-slide-up`}>
+            {/* Mobile Header: Temperature + AQI side-by-side */}
+            <div className="md:hidden flex justify-between items-start mb-6 border-b border-white/10 pb-4">
+               <div>
+                  <div className="flex items-center text-white/80 text-sm font-medium mb-1">
+                     <Thermometer className="w-4 h-4 mr-1" /> Temperature
+                  </div>
+                  <div className={`text-5xl font-bold bg-gradient-to-r ${tempColor} bg-clip-text text-transparent`}>{temperature}°</div>
+               </div>
+               <div className="text-right">
+                  <div className="flex items-center justify-end text-white/80 text-sm font-medium mb-1">
+                     <div className={`w-3 h-3 ${aqiInfo.color} rounded-full mr-1.5 shadow-inner-light`}></div> AQI
+                  </div>
+                  <div className="text-5xl font-bold text-white mb-1">{overallAQI}</div>
+                  <div className={`text-sm font-bold ${aqiInfo.textColor}`}>{aqiInfo.status}</div>
+               </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-10 items-center" role="region" aria-label="Air quality measurements">
               
-              {/* AQI Display */}
-              <div className="text-center lg:text-left animate-slide-in-left" style={{animationDelay: '100ms'}} role="region" aria-label="Overall air quality index">
+              {/* AQI Display - Hidden on Mobile as it's in the Hero header now */}
+              <div className="hidden md:block text-center lg:text-left animate-slide-in-left" style={{animationDelay: '100ms'}} role="region" aria-label="Overall air quality index">
                 <div className="flex items-center justify-center lg:justify-start mb-5">
                   <div className={`w-5 h-5 ${aqiInfo.color} rounded-full mr-3 animate-pulse-slow shadow-inner-light`}></div>
-                  <span className={`text-xl font-semibold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors duration-300`}>Air Quality Index</span>
+                  <span className={`text-xl font-semibold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors duration-300`}>AQI</span>
                 </div>
-                <div className={`text-7xl font-bold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'} transition-colors duration-300`}>{overallAQI}</div>
-                <div className={`text-2xl font-semibold ${darkMode ? 'text-white' : aqiInfo.textColor} mb-3 transition-colors duration-300`}>{aqiInfo.status}</div>
-                <div className={`text-base ${darkMode ? 'text-gray-300' : 'text-gray-600'} transition-colors duration-300`}>{aqiInfo.description}</div>
+                <div className={`text-6xl md:text-7xl font-bold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'} transition-colors duration-300`}>{overallAQI}</div>
+                <div className={`text-xl md:text-2xl font-semibold ${darkMode ? 'text-white' : aqiInfo.textColor} mb-2 md:mb-3 transition-colors duration-300`}>{aqiInfo.status}</div>
+                <div className={`text-sm md:text-base ${darkMode ? 'text-gray-300' : 'text-gray-600'} transition-colors duration-300`}>{aqiInfo.description}</div>
               </div>
 
               {/* AQI Progress Bar */}
@@ -154,7 +180,7 @@ const AirQualityBar: React.FC = () => {
                   <span>Unhealthy</span>
                   <span>Hazardous</span>
                 </div>
-                  <div className="h-8 bg-gradient-to-r from-green-400 via-yellow-400 via-orange-400 via-red-400 via-purple-400 to-red-800 rounded-full relative shadow-inner-light" role="progressbar" aria-valuemin="0" aria-valuemax="500" aria-valuenow={overallAQI} aria-label="Air Quality Index progress bar">
+                  <div className="h-8 bg-gradient-to-r from-green-400 via-yellow-400 via-orange-400 via-red-400 via-purple-400 to-red-800 rounded-full relative shadow-inner-light" role="progressbar" aria-valuemin={0} aria-valuemax={500} aria-valuenow={overallAQI} aria-label="Air Quality Index progress bar">
                     <div 
                       className={`absolute top-0 w-3 h-10 ${darkMode ? 'bg-gray-200' : 'bg-white'} border-2 ${darkMode ? 'border-primary-600' : 'border-gray-800'} rounded-full transform -translate-y-1 shadow-soft transition-all duration-500 animate-pulse-slow`}
                       style={{ left: `${Math.min((overallAQI / 500) * 100, 100)}%` }}
@@ -186,13 +212,13 @@ const AirQualityBar: React.FC = () => {
                 </div>
               </div>
 
-              {/* Temperature-Responsive Section */}
-              <div className="text-center lg:text-right animate-slide-in-right" style={{animationDelay: '300ms'}}>
+              {/* Temperature-Responsive Section - Desktop Only */}
+              <div className="hidden md:block text-center lg:text-right animate-slide-in-right" style={{animationDelay: '300ms'}}>
                 <div className="flex items-center justify-center lg:justify-end mb-5">
                   <Thermometer className={`w-6 h-6 mr-3 ${darkMode ? 'text-gray-300' : 'text-gray-600'} animate-pulse-slow transition-colors duration-300`} />
-                  <span className={`text-xl font-semibold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors duration-300`}>Temperature Impact</span>
+                  <span className={`text-lg md:text-xl font-semibold ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors duration-300`}>Temperature Impact</span>
                 </div>
-                <div className={`text-6xl font-bold bg-gradient-to-r ${tempColor} bg-clip-text text-transparent mb-3 animate-float`}>
+                <div className={`text-5xl md:text-6xl font-bold bg-gradient-to-r ${tempColor} bg-clip-text text-transparent mb-3 animate-float`}>
                   {temperature}°C
                 </div>
                 <div className={`text-base ${darkMode ? 'text-gray-300' : 'text-gray-600'} mb-5 transition-colors duration-300 max-w-xs ml-auto`}>
@@ -219,8 +245,8 @@ const AirQualityBar: React.FC = () => {
           </div>
 
           {/* Additional Environmental Indicators */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 animate-slide-up" style={{animationDelay: '400ms'}}>
-            <div className={`${darkMode ? 'bg-primary-800/90 backdrop-blur-sm border border-primary-700 text-white' : 'bg-white/95 backdrop-blur-sm border border-gray-100'} rounded-2xl shadow-card p-6 transition-all duration-300 hover:shadow-glow transform hover:scale-[1.02] animate-slide-in-left`} style={{animationDelay: '500ms'}} role="region" aria-label="Humidity information">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 animate-slide-up" style={{animationDelay: '400ms'}}>
+            <div className={`${darkMode ? 'bg-primary-800/90 backdrop-blur-sm border border-primary-700 text-white' : 'bg-white/95 backdrop-blur-sm border border-gray-100'} rounded-2xl shadow-card p-5 md:p-6 transition-all duration-300 hover:shadow-glow transform md:hover:scale-[1.02] animate-slide-in-left`} style={{animationDelay: '500ms'}} role="region" aria-label="Humidity information">
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center">
                   <Wind className={`w-7 h-7 text-blue-500 dark:text-blue-400 mr-3 animate-float`} style={{animationDelay: '100ms'}} />
@@ -228,7 +254,7 @@ const AirQualityBar: React.FC = () => {
                 </div>
                 <span className={`text-3xl font-bold text-blue-600 dark:text-blue-400 transition-colors duration-300`}>{nodeData?.humidity || 'N/A'}%</span>
               </div>
-              <div className={`w-full ${darkMode ? 'bg-gray-700' : 'bg-gray-200'} rounded-full h-3 shadow-inner-light transition-colors duration-300`} role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={nodeData?.humidity || 0} aria-label="Humidity level">
+              <div className={`w-full ${darkMode ? 'bg-gray-700' : 'bg-gray-200'} rounded-full h-3 shadow-inner-light transition-colors duration-300`} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={nodeData?.humidity || 0} aria-label="Humidity level">
                 <div 
                   className="bg-blue-500 h-3 rounded-full transition-all duration-500 shadow-soft"
                   style={{ width: `${Math.min(nodeData?.humidity || 0, 100)}%` }}
@@ -241,7 +267,7 @@ const AirQualityBar: React.FC = () => {
               </div>
             </div>
 
-            <div className={`${darkMode ? 'bg-primary-800/90 backdrop-blur-sm border border-primary-700 text-white' : 'bg-white/95 backdrop-blur-sm border border-gray-100'} rounded-2xl shadow-card p-6 transition-all duration-300 hover:shadow-glow transform hover:scale-[1.02] animate-slide-up`} style={{animationDelay: '600ms'}} role="region" aria-label="UV Index information">
+            <div className={`${darkMode ? 'bg-primary-800/90 backdrop-blur-sm border border-primary-700 text-white' : 'bg-white/95 backdrop-blur-sm border border-gray-100'} rounded-2xl shadow-card p-5 md:p-6 transition-all duration-300 hover:shadow-glow transform md:hover:scale-[1.02] animate-slide-up`} style={{animationDelay: '600ms'}} role="region" aria-label="UV Index information">
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center">
                   <div className="w-7 h-7 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full mr-3 shadow-soft animate-pulse-slow"></div>
@@ -255,7 +281,7 @@ const AirQualityBar: React.FC = () => {
               <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'} mt-2 transition-colors duration-300`}>{nodeData?.uvIndex || 0} mW/cm²</div>
             </div>
 
-            <div className={`${darkMode ? 'bg-primary-800/90 backdrop-blur-sm border border-primary-700 text-white' : 'bg-white/95 backdrop-blur-sm border border-gray-100'} rounded-2xl shadow-card p-6 transition-all duration-300 hover:shadow-glow transform hover:scale-[1.02] animate-slide-in-right`} style={{animationDelay: '700ms'}}>
+            <div className={`${darkMode ? 'bg-primary-800/90 backdrop-blur-sm border border-primary-700 text-white' : 'bg-white/95 backdrop-blur-sm border border-gray-100'} rounded-2xl shadow-card p-5 md:p-6 transition-all duration-300 hover:shadow-glow transform md:hover:scale-[1.02] animate-slide-in-right`} style={{animationDelay: '700ms'}}>
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center">
                   <div className={`w-7 h-7 ${nodeData?.rain === 'Yes' ? 'bg-gradient-to-r from-blue-400 to-blue-600' : 'bg-gradient-to-r from-gray-300 to-gray-500'} rounded-full mr-3 shadow-soft ${nodeData?.rain === 'Yes' ? 'animate-pulse-slow' : ''}`}></div>
@@ -274,6 +300,63 @@ const AirQualityBar: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* CO + RPI card */}
+            {(() => {
+              const coValue = nodeData?.mq_co;
+              const rpi = (coValue !== null && coValue !== undefined && Number(coValue) > 0)
+                ? calculateRPI(Number(coValue), dynamicCoBaseline)
+                : null;
+              return (
+                <div
+                  className={`${darkMode ? 'bg-primary-800/90 backdrop-blur-sm border border-primary-700 text-white' : 'bg-white/95 backdrop-blur-sm border border-gray-100'} rounded-2xl shadow-card p-5 md:p-6 transition-all duration-300 hover:shadow-glow transform md:hover:scale-[1.02] animate-slide-in-right`}
+                  style={{animationDelay: '800ms'}}
+                  role="region"
+                  aria-label="Carbon Monoxide Relative Pollution Index"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center">
+                      <Zap className={`w-6 h-6 mr-3 ${rpi ? rpi.textColor : 'text-gray-400'} animate-pulse-slow`} />
+                      <span className={`font-semibold text-lg ${darkMode ? 'text-white' : 'text-gray-800'} transition-colors duration-300`}>CO Pollution</span>
+                    </div>
+                    {rpi ? (
+                      <span className={`text-2xl font-bold ${rpi.textColor} transition-colors duration-300`}>
+                        {rpi.rpi.toFixed(2)}
+                        <span className={`text-sm font-medium ml-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>RPI</span>
+                      </span>
+                    ) : (
+                      <span className={`text-lg font-medium ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>N/A</span>
+                    )}
+                  </div>
+
+                  {rpi ? (
+                    <>
+                      {/* Status row with animated dot */}
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="relative flex h-2.5 w-2.5">
+                          <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-60 ${rpi.dotColor}`} />
+                          <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${rpi.dotColor}`} />
+                        </span>
+                        <span className={`text-base font-semibold ${darkMode ? rpi.textColor : 'text-gray-700'}`}>{rpi.category}</span>
+                      </div>
+                      {/* Progress bar */}
+                      <div className={`w-full ${darkMode ? 'bg-gray-700' : 'bg-gray-200'} rounded-full h-2.5 shadow-inner-light`}>
+                        <div
+                          className={`h-2.5 rounded-full ${rpi.dotColor} transition-all duration-700`}
+                          style={{ width: `${Math.min(100, (rpi.rpi / 4) * 100)}%` }}
+                        />
+                      </div>
+                      {/* Scale labels */}
+                      <div className={`flex justify-between mt-1.5 text-[10px] ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                        <span>Clean</span><span>Normal</span><span>Moderate</span><span>Danger</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No CO sensor data available</div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>

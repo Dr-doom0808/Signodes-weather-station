@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNodes } from '../../context/NodesContext';
-import { MapPin, Thermometer, Droplets, Wind, Gauge, CloudRain, Sun, Zap } from 'lucide-react';
-import { calibrateAQI, getAQICategory } from '../../utils/sensorCalibration';
+import { Thermometer, Droplets, Wind, Gauge, CloudRain, Sun, Zap } from 'lucide-react';
+import { calibrateAQI, getAQICategory, coToPollutionPercent, getCOPollutionCategory } from '../../utils/sensorCalibration';
 import { useDarkMode } from '../../context/DarkModeContext';
 
 interface NodeData {
@@ -27,6 +27,16 @@ const CampusMap: React.FC = () => {
   const { nodes: sensorNodes, loading, error } = useNodes();
   const { darkMode } = useDarkMode();
   const [selectedNode, setSelectedNode] = useState<NodeData | null>(null);
+
+  // Lock body scroll when modal is open so the page doesn't scroll behind it
+  useEffect(() => {
+    if (selectedNode) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [selectedNode]);
 
   // Map sensor nodes to the component's expected format
   const nodes: NodeData[] = useMemo(() => {
@@ -60,7 +70,7 @@ const CampusMap: React.FC = () => {
         uvIndex: String(node.uvIndex || 'N/A'),
         uvRisk: node.uvRisk || 'N/A',
         // SensorData may not include windSpeed; access defensively
-        windSpeed: (node as any).windSpeed || 'N/A',
+        windSpeed: 'windSpeed' in node ? String((node as Record<string, unknown>).windSpeed) : 'N/A',
         // Include CO value
         mq_co: String(node.mq_co || 'N/A'),
         lastUpdated: node.lastUpdated || new Date().toISOString()
@@ -100,13 +110,13 @@ const CampusMap: React.FC = () => {
   if (loading) {
     return (
       <section 
-        className={`py-16 ${darkMode ? 'bg-gradient-to-br from-blue-900 to-indigo-900' : 'bg-gradient-to-br from-blue-50 to-indigo-50'}`} 
+        className={`py-16 ${darkMode ? 'bg-slate-900/50' : 'bg-slate-50'}`} 
         aria-labelledby="campus-map-heading"
         role="region"
       >
         <div className="container mx-auto px-4 text-center py-16">
-          <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${darkMode ? 'border-blue-400' : 'border-blue-600'} mx-auto`}></div>
-          <p className={`mt-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Loading sensor data...</p>
+          <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${darkMode ? 'border-sky-400' : 'border-sky-600'} mx-auto`}></div>
+          <p className={`mt-4 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>Loading sensor data...</p>
         </div>
       </section>
     );
@@ -115,20 +125,20 @@ const CampusMap: React.FC = () => {
   if (error) {
     return (
       <section 
-        className={`py-16 ${darkMode ? 'bg-gradient-to-br from-blue-900 to-indigo-900' : 'bg-gradient-to-br from-blue-50 to-indigo-50'}`}
+        className={`py-16 ${darkMode ? 'bg-slate-900/50' : 'bg-slate-50'}`}
         role="region"
         aria-label="Error loading campus map"
       >
         <div className="container mx-auto px-4">
-          <div className={`${darkMode ? 'bg-red-900/30 border-l-4 border-red-700' : 'bg-red-50 border-l-4 border-red-400'} p-4 rounded`}>
+          <div className={`${darkMode ? 'bg-rose-900/30 border-l-4 border-rose-700' : 'bg-rose-50 border-l-4 border-rose-400'} p-4 rounded`}>
             <div className="flex">
               <div className="flex-shrink-0">
-                <svg className={`h-5 w-5 ${darkMode ? 'text-red-500' : 'text-red-400'}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <svg className={`h-5 w-5 ${darkMode ? 'text-rose-500' : 'text-rose-400'}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
               </div>
               <div className="ml-3">
-                <p className={`text-sm ${darkMode ? 'text-red-400' : 'text-red-700'}`} role="alert">
+                <p className={`text-sm ${darkMode ? 'text-rose-400' : 'text-rose-700'}`} role="alert">
                   Error loading sensor data: {error.message}
                 </p>
               </div>
@@ -141,32 +151,34 @@ const CampusMap: React.FC = () => {
 
   return (
     <section 
-      className={`py-16 ${darkMode ? 'bg-gradient-to-br from-blue-900 to-indigo-900' : 'bg-gradient-to-br from-blue-50 to-indigo-50'}`}
+      id="campus-overview"
+      className={`py-16 ${darkMode ? 'bg-slate-900/50 text-slate-100 relative' : 'bg-slate-50 text-slate-900 relative'}`}
       role="region"
       aria-labelledby="campus-map-heading"
     >
-      <div className="container mx-auto px-4">
+      <div className={`absolute inset-0 border-t ${darkMode ? 'border-slate-800/50' : 'border-slate-200'} pointer-events-none`}></div>
+      <div className="container mx-auto px-4 relative z-10">
         {/* Header */}
-        <div className="text-center mb-12">
-          <div className={`inline-flex items-center justify-center w-16 h-16 ${darkMode ? 'bg-blue-800/50' : 'bg-blue-100'} rounded-full mb-4 shadow-glow`}>
-            <MapPin className={`w-8 h-8 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} aria-hidden="true" />
-          </div>
-          <h2 id="campus-map-heading" className={`text-3xl md:text-4xl font-bold ${darkMode ? 'text-gray-100' : 'text-gray-900'} mb-4`}>
+        <div className="text-center mb-10 md:mb-12">
+          <h2 id="campus-map-heading" className={`text-3xl md:text-4xl tracking-tight font-bold border-l-4 ${darkMode ? 'border-sky-500 text-slate-100' : 'border-sky-600 text-slate-900'} pl-4 inline-block mb-3 md:mb-4`}>
             Campus Map
           </h2>
-          <p className={`text-lg ${darkMode ? 'text-gray-300' : 'text-gray-600'} max-w-2xl mx-auto`}>
-            NIET campus overview with sensor node locations
+          <p className={`text-base md:text-lg transition-colors duration-300 ${darkMode ? 'text-slate-400' : 'text-slate-600'} max-w-2xl mx-auto`}>
+             Interactive site perspective of connected active and inactive sensor units
           </p>
         </div>
 
         {/* Campus Map */}
-        <div className={`${darkMode ? 'bg-primary-800/90 backdrop-blur-sm border border-primary-700' : 'bg-white'} rounded-2xl shadow-xl p-8 transition-all duration-300`} role="region" aria-label="Interactive campus map with sensor locations">
-          <div className={`${darkMode ? 'bg-gradient-to-br from-green-900/30 to-blue-900/30' : 'bg-gradient-to-br from-green-100 to-blue-100'} rounded-xl h-96 flex items-center justify-center relative overflow-hidden border ${darkMode ? 'border-primary-700' : 'border-blue-100'}`}>
+        <div className={`${darkMode ? 'bg-slate-800/80 border-slate-700/50' : 'bg-white border-slate-200'} rounded-2xl shadow-xl p-8 transition-all duration-300 relative overflow-hidden`} style={{ backdropFilter: 'blur(12px)' }} role="region" aria-label="Interactive campus map with sensor locations">
+           {/* Top styling bar */}
+          <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${darkMode ? 'from-emerald-500/0 via-emerald-500 to-emerald-500/0' : 'from-slate-300/0 via-slate-300 to-slate-300/0'} opacity-50`}></div>
+           
+          <div className={`${darkMode ? 'bg-slate-900/50' : 'bg-slate-100'} rounded-xl h-96 flex items-center justify-center relative overflow-hidden border ${darkMode ? 'border-slate-700/50' : 'border-slate-200'}`}>
             {/* Campus Map Image */}
             <img 
               src="/mapimage.jpeg" 
               alt="NIET Campus Map showing buildings and grounds" 
-              className="w-full h-full object-cover rounded-xl opacity-80"
+              className={`w-full h-full object-cover rounded-xl ${darkMode ? 'opacity-50 saturate-50' : 'opacity-80'}`}
             />
             
             {/* Node markers */}
@@ -179,17 +191,21 @@ const CampusMap: React.FC = () => {
                 aria-label={`View ${node.name} details at ${node.location}`}
                 aria-expanded={selectedNode?.id === node.id ? "true" : "false"}
               >
-                <div className="relative">
-                  <div className={`w-6 h-6 rounded-full border-2 border-white shadow-lg ${
-                    index === 0 ? 'bg-green-500' : 'bg-gray-400 opacity-60'
+                <div className="relative flex items-center justify-center">
+                  {/* Pulse effect for active nodes */}
+                  {index === 0 && (
+                    <div className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-75 inline-flex h-full w-full"></div>
+                  )}
+                  <div className={`relative z-10 w-6 h-6 rounded-full border-2 ${darkMode ? 'border-slate-900' : 'border-white'} shadow-lg ${
+                    index === 0 ? 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.7)]' : 'bg-slate-500 opacity-60'
                   }`}>
                   </div>
-                  <div className="mt-2 bg-white px-3 py-1 rounded-lg shadow-md border border-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className={`text-xs font-semibold ${index === 0 ? 'text-green-700' : 'text-gray-600'}`}>
+                  <div className={`absolute top-full mt-2 ${darkMode ? 'bg-slate-800 border-slate-700 shadow-xl' : 'bg-white border-slate-200 shadow-md'} px-3 py-1.5 rounded-lg border opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20`}>
+                    <div className={`text-xs font-bold tracking-wide ${index === 0 ? (darkMode ? 'text-emerald-400' : 'text-emerald-700') : (darkMode ? 'text-slate-400' : 'text-slate-600')}`}>
                       {node.name}
-                    </span>
-                    <div className="text-xs text-gray-600">
-                      {index === 0 ? 'Active' : 'Inactive'}
+                    </div>
+                    <div className={`text-[10px] font-medium uppercase tracking-wider ${darkMode ? 'text-slate-500' : 'text-slate-500'}`}>
+                      {index === 0 ? 'Active' : 'Offline'}
                     </div>
                   </div>
                 </div>
@@ -231,16 +247,30 @@ const CampusMap: React.FC = () => {
           </div>
         </div>
 
-        {/* Node details modal */}
         {selectedNode && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="node-details-title">
-            <div className={`${darkMode ? 'bg-primary-900 border border-primary-700' : 'bg-white'} rounded-2xl shadow-2xl max-w-md w-full`}>
-              <div className="p-6">
+          <div 
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-end md:items-center justify-center z-[100] md:p-4" 
+            role="dialog" 
+            aria-modal="true" 
+            aria-labelledby="node-details-title"
+            onClick={() => setSelectedNode(null)}
+          >
+            <div 
+              className={`${darkMode ? 'bg-slate-800 md:border md:border-slate-700' : 'bg-white md:border md:border-slate-200'} rounded-t-3xl md:rounded-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.3)] md:shadow-2xl max-w-md w-full max-h-[75vh] md:max-h-[90vh] overflow-y-auto transform transition-transform duration-300`}
+              onClick={(e) => e.stopPropagation()}
+            >
+               {/* Mobile Drag Indicator */}
+               <div className="flex justify-center pt-3 pb-1 md:hidden">
+                 <div className={`w-12 h-1.5 rounded-full ${darkMode ? 'bg-slate-600' : 'bg-slate-300'}`}></div>
+               </div>
+               {/* Desktop Green Accent Line */}
+               <div className={`h-2 ${darkMode ? 'bg-emerald-500' : 'bg-emerald-500'} hidden md:block`}></div>
+              <div className="p-5 md:p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 id="node-details-title" className={`text-2xl font-bold ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>{selectedNode.name}</h3>
+                  <h3 id="node-details-title" className={`text-2xl font-bold tracking-tight ${darkMode ? 'text-slate-100' : 'text-slate-800'}`}>{selectedNode.name}</h3>
                   <button
                     onClick={() => setSelectedNode(null)}
-                    className={`${darkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'} text-2xl focus:outline-none focus:ring-2 focus:ring-signodes-400 rounded-md p-1`}
+                    className={`${darkMode ? 'text-slate-400 hover:text-slate-200 bg-slate-700/50 hover:bg-slate-700' : 'text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200'} h-8 w-8 rounded-full flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500`}
                     aria-label="Close details"
                   >
                     ×
@@ -248,89 +278,99 @@ const CampusMap: React.FC = () => {
                 </div>
                 
                 <div className="mb-6">
-                  <p className={`${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{selectedNode.location}</p>
-                  <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm`}>Coordinates: {selectedNode.latitude}°N, {selectedNode.longitude}°E</p>
+                  <p className={`font-medium ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>{selectedNode.location}</p>
+                  <p className={`${darkMode ? 'text-slate-500' : 'text-slate-500'} text-xs uppercase tracking-wider mt-1`}>Pos: {selectedNode.latitude}°N, {selectedNode.longitude}°E</p>
                 </div>
                 
-                <div className="space-y-4">
-                  <div className={`flex items-center justify-between p-3 rounded-lg ${darkMode ? 'bg-blue-900/30 border border-blue-700/30' : 'bg-blue-50'}`} role="group" aria-label="Temperature reading">
+                <div className="space-y-3">
+                  <div className={`flex items-center justify-between p-3 rounded-xl border ${darkMode ? 'bg-rose-900/10 border-rose-800/30' : 'bg-rose-50 border-rose-100'}`} role="group" aria-label="Temperature reading">
                     <div className="flex items-center space-x-3">
-                      <Thermometer className={`w-5 h-5 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                      <span className={`font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>Temperature</span>
+                      <Thermometer className={`w-5 h-5 ${darkMode ? 'text-rose-400' : 'text-rose-600'}`} />
+                      <span className={`text-sm font-semibold uppercase tracking-wider ${darkMode ? 'text-rose-400' : 'text-rose-700'}`}>Temperature</span>
                     </div>
-                    <span className={`text-lg font-bold ${darkMode ? 'text-blue-300' : 'text-blue-600'}`}>
+                    <span className={`text-lg font-bold tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                       {selectedNode.temperature === 'N/A' ? 'N/A' : `${selectedNode.temperature}°C`}
                     </span>
                   </div>
                   
-                  <div className={`flex items-center justify-between p-3 rounded-lg ${darkMode ? 'bg-cyan-900/30 border border-cyan-700/30' : 'bg-cyan-50'}`} role="group" aria-label="Humidity reading">
+                  <div className={`flex items-center justify-between p-3 rounded-xl border ${darkMode ? 'bg-sky-900/10 border-sky-800/30' : 'bg-sky-50 border-sky-100'}`} role="group" aria-label="Humidity reading">
                     <div className="flex items-center space-x-3">
-                      <Droplets className={`w-5 h-5 ${darkMode ? 'text-cyan-400' : 'text-cyan-600'}`} />
-                      <span className={`font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>Humidity</span>
+                      <Droplets className={`w-5 h-5 ${darkMode ? 'text-sky-400' : 'text-sky-600'}`} />
+                      <span className={`text-sm font-semibold uppercase tracking-wider ${darkMode ? 'text-sky-400' : 'text-sky-700'}`}>Humidity</span>
                     </div>
-                    <span className={`text-lg font-bold ${darkMode ? 'text-cyan-300' : 'text-cyan-600'}`}>
+                    <span className={`text-lg font-bold tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                       {selectedNode.humidity === 'N/A' ? 'N/A' : `${selectedNode.humidity}%`}
                     </span>
                   </div>
                   
-                  <div className={`flex items-center justify-between p-3 rounded-lg ${darkMode ? 'bg-green-900/30 border border-green-700/30' : 'bg-green-50'}`} role="group" aria-label="Rain status">
+                  <div className={`flex items-center justify-between p-3 rounded-xl border ${darkMode ? 'bg-indigo-900/10 border-indigo-800/30' : 'bg-indigo-50 border-indigo-100'}`} role="group" aria-label="Rain status">
                     <div className="flex items-center space-x-3">
-                      <CloudRain className={`w-5 h-5 ${darkMode ? 'text-green-400' : 'text-green-600'}`} />
-                      <span className={`font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>Rain Status</span>
+                      <CloudRain className={`w-5 h-5 ${darkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
+                      <span className={`text-sm font-semibold uppercase tracking-wider ${darkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>Rain Status</span>
                     </div>
-                    <span className={`text-lg font-bold ${darkMode ? 'text-green-300' : 'text-green-600'}`}>
+                    <span className={`text-lg font-bold tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                       {selectedNode.rain}
                     </span>
                   </div>
                   
-                  <div className={`flex items-center justify-between p-3 rounded-lg ${darkMode ? 'bg-purple-900/30 border border-purple-700/30' : 'bg-purple-50'}`} role="group" aria-label="Wind speed reading">
+                  <div className={`flex items-center justify-between p-3 rounded-xl border ${darkMode ? 'bg-purple-900/10 border-purple-800/30' : 'bg-purple-50 border-purple-100'}`} role="group" aria-label="Wind speed reading">
                     <div className="flex items-center space-x-3">
                       <Wind className={`w-5 h-5 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-                      <span className={`font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>Wind Speed</span>
+                      <span className={`text-sm font-semibold uppercase tracking-wider ${darkMode ? 'text-purple-400' : 'text-purple-700'}`}>Wind Speed</span>
                     </div>
-                    <span className={`text-lg font-bold ${darkMode ? 'text-purple-300' : 'text-purple-600'}`}>
+                    <span className={`text-lg font-bold tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                       {selectedNode.windSpeed === 'N/A' ? 'N/A' : `${selectedNode.windSpeed} km/h`}
                     </span>
                   </div>
                   
-                  <div className={`flex items-center justify-between p-3 rounded-lg ${darkMode ? 'bg-orange-900/30 border border-orange-700/30' : 'bg-orange-50'}`} role="group" aria-label="PM2.5 air quality reading">
+                  <div className={`flex items-center justify-between p-3 rounded-xl border ${darkMode ? 'bg-emerald-900/10 border-emerald-800/30' : 'bg-emerald-50 border-emerald-100'}`} role="group" aria-label="PM2.5 air quality reading">
                     <div className="flex items-center space-x-3">
-                      <Gauge className={`w-5 h-5 ${darkMode ? 'text-orange-400' : 'text-orange-600'}`} />
-                      <span className={`font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>PM2.5</span>
+                      <Gauge className={`w-5 h-5 ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                      <span className={`text-sm font-semibold uppercase tracking-wider ${darkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>PM2.5</span>
                     </div>
-                    <span className={`text-lg font-bold ${darkMode ? 'text-orange-300' : getAqiColor(selectedNode.aqi25val)}`}>
+                    <span className={`text-lg font-bold tracking-tight ${darkMode ? 'text-emerald-400' : getAqiColor(selectedNode.aqi25val)}`}>
                       {selectedNode.aqi25val} µg/m³
                     </span>
                   </div>
                   
-                  <div className={`flex items-center justify-between p-3 rounded-lg ${darkMode ? 'bg-red-900/30 border border-red-700/30' : 'bg-red-50'}`} role="group" aria-label="PM10 air quality reading">
+                  <div className={`flex items-center justify-between p-3 rounded-xl border ${darkMode ? 'bg-emerald-900/10 border-emerald-800/30' : 'bg-emerald-50 border-emerald-100'}`} role="group" aria-label="PM10 air quality reading">
                     <div className="flex items-center space-x-3">
-                      <Gauge className={`w-5 h-5 ${darkMode ? 'text-red-400' : 'text-red-600'}`} />
-                      <span className={`font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>PM10</span>
+                      <Gauge className={`w-5 h-5 ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                      <span className={`text-sm font-semibold uppercase tracking-wider ${darkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>PM10</span>
                     </div>
-                    <span className={`text-lg font-bold ${darkMode ? 'text-red-300' : getAqiColor(selectedNode.aqi10val)}`}>
+                    <span className={`text-lg font-bold tracking-tight ${darkMode ? 'text-emerald-400' : getAqiColor(selectedNode.aqi10val)}`}>
                       {selectedNode.aqi10val} µg/m³
                     </span>
                   </div>
                   
-                  <div className={`flex items-center justify-between p-3 rounded-lg ${darkMode ? 'bg-yellow-900/30 border border-yellow-700/30' : 'bg-yellow-50'}`} role="group" aria-label="UV index reading">
+                  <div className={`flex items-center justify-between p-3 rounded-xl border ${darkMode ? 'bg-yellow-900/10 border-yellow-800/30' : 'bg-yellow-50 border-yellow-100'}`} role="group" aria-label="UV index reading">
                     <div className="flex items-center space-x-3">
                       <Sun className={`w-5 h-5 ${darkMode ? 'text-yellow-400' : 'text-yellow-600'}`} />
-                      <span className={`font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>UV Index</span>
+                      <span className={`text-sm font-semibold uppercase tracking-wider ${darkMode ? 'text-yellow-400' : 'text-yellow-700'}`}>UV Index</span>
                     </div>
-                    <span className={`text-lg font-bold ${darkMode ? 'text-yellow-300' : getUvColor(typeof selectedNode.uvIndex === 'number' ? calculateUvRisk(selectedNode.uvIndex) : selectedNode.uvRisk)}`}>
+                    <span className={`text-lg font-bold tracking-tight ${darkMode ? 'text-yellow-400' : getUvColor(typeof selectedNode.uvIndex === 'number' ? calculateUvRisk(selectedNode.uvIndex) : selectedNode.uvRisk)}`}>
                       {selectedNode.uvIndex} {typeof selectedNode.uvIndex === 'number' ? `(${calculateUvRisk(selectedNode.uvIndex)})` : selectedNode.uvRisk && `(${selectedNode.uvRisk})`}
                     </span>
                   </div>
                   
-                  <div className={`flex items-center justify-between p-3 rounded-lg ${darkMode ? 'bg-rose-900/30 border border-rose-700/30' : 'bg-rose-50'}`} role="group" aria-label="Carbon monoxide reading">
+                  <div className={`flex items-center justify-between p-3 rounded-xl border ${darkMode ? 'bg-rose-900/10 border-rose-800/30' : 'bg-rose-50 border-rose-100'}`} role="group" aria-label="Carbon monoxide reading">
                     <div className="flex items-center space-x-3">
                       <Zap className={`w-5 h-5 ${darkMode ? 'text-rose-400' : 'text-rose-600'}`} />
-                      <span className={`font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>Carbon Monoxide</span>
+                      <span className={`text-sm font-semibold uppercase tracking-wider ${darkMode ? 'text-rose-400' : 'text-rose-700'}`}>CO Index</span>
                     </div>
-                    <span className={`text-lg font-bold ${darkMode ? 'text-rose-300' : 'text-rose-600'}`}>
-                      {selectedNode.mq_co} ppm
-                    </span>
+                    {selectedNode.mq_co && selectedNode.mq_co !== 'N/A' ? (() => {
+                      const pct = coToPollutionPercent(Number(selectedNode.mq_co));
+                      const cat = getCOPollutionCategory(pct);
+                      return (
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2.5 h-2.5 rounded-full ${cat.dotColor} flex-shrink-0`} />
+                          <span className={`text-lg font-bold tracking-tight ${darkMode ? cat.textColor : 'text-slate-900'}`}>
+                            {pct.toFixed(1)}%
+                          </span>
+                          <span className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>({cat.label})</span>
+                        </div>
+                      );
+                    })() : <span className="text-lg font-bold text-slate-400">N/A</span>}
                   </div>
                 </div>
               </div>

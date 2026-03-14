@@ -5,6 +5,13 @@ import { Thermometer, Droplets, Wind, Sun, AlertTriangle, Wifi, Zap, Info } from
 import { formatSensorDate } from '../utils/dateUtils';
 import SensorDetailsModal from '../components/common/SensorDetailsModal';
 import DevModeBanner from '../components/common/DevModeBanner';
+import NoDataBadge from '../components/common/NoDataBadge';
+import { motion, AnimatePresence } from 'framer-motion';
+import { calculateRPI } from '../utils/sensorCalibration';
+
+const isValidData = (val: unknown): boolean => {
+  return val !== null && val !== undefined && val !== 0 && val !== 'N/A' && val !== '';
+};
 
 const getAqiColor = (aqi: number) => {
   if (aqi <= 50) return 'bg-signodes-100 text-signodes-800';
@@ -44,6 +51,8 @@ const Dashboard: React.FC = () => {
 
     try {
       const lastUpdated = new Date(node.lastUpdated);
+      if (isNaN(lastUpdated.getTime())) return false;
+
       const now = new Date();
       const OFFLINE_THRESHOLD_MS = 15 * 60 * 1000;
 
@@ -93,8 +102,15 @@ const Dashboard: React.FC = () => {
        isOpen={!!selectedSensor}
        sensorData={{
         ...selectedSensor,
+        lastUpdated: selectedSensor.lastUpdated || 'N/A',
         isOnline: isNodeOnline(selectedSensor),
-        aqi: selectedSensor.aqi25val
+        aqi: selectedSensor.aqi25val ?? undefined,
+        temperature: selectedSensor.temperature ?? undefined,
+        humidity: selectedSensor.humidity ?? undefined,
+        pressure: selectedSensor.pressure ?? undefined,
+        uvIndex: selectedSensor.uvIndex ?? undefined,
+        mq_co: selectedSensor.mq_co ?? undefined,
+        uvRisk: selectedSensor.uvRisk ?? undefined,
       }}
       onClose={() => setSelectedSensor(null)}
       darkMode={darkMode}
@@ -115,13 +131,18 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* SENSOR CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+        <AnimatePresence>
+        {nodes.map((node, index) => (
 
-        {nodes.map((node) => (
-
-          <div
+          <motion.div
             key={node.id}
-            className={`${darkMode ? 'bg-primary-900 border-primary-800' : 'bg-white border-gray-100'} p-6 rounded-xl shadow-card border`}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.4, delay: index * 0.1 }}
+            whileHover={{ y: -4, transition: { duration: 0.2 } }}
+            className={`relative overflow-hidden ${darkMode ? 'bg-primary-900 border-primary-800 shadow-none hover:shadow-glow-accent' : 'bg-white border-gray-100 shadow-soft hover:shadow-lg'} p-5 sm:p-6 rounded-2xl border transition-shadow duration-300`}
           >
 
             {/* CARD HEADER */}
@@ -168,8 +189,10 @@ const Dashboard: React.FC = () => {
                   <span>Temperature</span>
                 </div>
 
-                <span className="font-bold">
-                  {node.name !== 'Node A' ? 'N/A' : `${node.temperature}°C`}
+                <span className="font-bold flex items-center">
+                  {isValidData(node.temperature) ? `${node.temperature}°C` : (
+                    <NoDataBadge />
+                  )}
                 </span>
               </div>
 
@@ -180,8 +203,10 @@ const Dashboard: React.FC = () => {
                   <span>Humidity</span>
                 </div>
 
-                <span className="font-bold">
-                  {node.name !== 'Node A' ? 'N/A' : `${node.humidity}%`}
+                <span className="font-bold flex items-center">
+                  {isValidData(node.humidity) ? `${node.humidity}%` : (
+                    <NoDataBadge />
+                  )}
                 </span>
               </div>
 
@@ -192,11 +217,11 @@ const Dashboard: React.FC = () => {
                   <span>Air Quality</span>
                 </div>
 
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${node.name !== 'Node A'
-                  ? 'bg-gray-100 text-gray-800'
+                <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center ${node.aqi25val === null
+                  ? (darkMode ? 'bg-primary-800 text-transparent animate-pulse' : 'bg-gray-200 text-transparent animate-pulse')
                   : getAqiColor(node.aqi25val)
                   }`}>
-                  AQI: {node.name !== 'Node A' ? 'N/A' : node.aqi25val}
+                  {node.aqi25val !== null ? `AQI: ${node.aqi25val}` : 'Wait'}
                 </span>
               </div>
 
@@ -207,21 +232,47 @@ const Dashboard: React.FC = () => {
                   <span>UV Index</span>
                 </div>
 
-                <span className={`px-3 py-1 rounded-full text-xs ${getUvColor(node.uvRisk || 'Low')}`}>
-                  {node.name !== 'Node A' ? 'N/A' : `${node.uvIndex} (${node.uvRisk || 'Low'})`}
+                <span className={`px-3 py-1 rounded-full text-xs flex items-center ${node.uvRisk && node.uvRisk !== 'N/A' ? getUvColor(node.uvRisk) : (darkMode ? 'bg-primary-800 text-transparent animate-pulse' : 'bg-gray-200 text-transparent animate-pulse')}`}>
+                  {isValidData(node.uvIndex) ? `${node.uvIndex} (${node.uvRisk || 'Low'})` : <NoDataBadge />}
                 </span>
               </div>
 
-              {/* CO */}
-              <div className="flex justify-between items-center">
-                <div className="flex items-center">
-                  <Zap className="w-5 h-5 mr-2 text-signodes-500" />
-                  <span>Carbon Monoxide</span>
+              {/* CO + RPI */}
+              <div className={`rounded-xl border px-3 py-2 mt-1 ${
+                darkMode ? 'border-slate-700 bg-slate-800/50' : 'border-gray-100 bg-gray-50'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Zap className="w-4 h-4 mr-2 text-signodes-500" />
+                    <span className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Carbon Monoxide</span>
+                  </div>
+                  <span className="font-bold text-sm flex items-center">
+                    {isValidData(node.mq_co) ? `${node.mq_co}` : <NoDataBadge />}
+                  </span>
                 </div>
-
-                <span className="font-bold">
-                  {node.name !== 'Node A' ? 'N/A' : `${node.mq_co || 'N/A'} ppm`}
-                </span>
+                {isValidData(node.mq_co) && (() => {
+                  const rpi = calculateRPI(Number(node.mq_co));
+                  return (
+                    <div className="mt-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`relative flex h-2 w-2`}>
+                            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-60 ${rpi.dotColor}`} />
+                            <span className={`relative inline-flex rounded-full h-2 w-2 ${rpi.dotColor}`} />
+                          </span>
+                          <span className={`text-xs font-medium ${darkMode ? rpi.textColor : 'text-gray-700'}`}>{rpi.category}</span>
+                        </div>
+                        <span className={`text-xs font-bold ${darkMode ? rpi.textColor : 'text-gray-900'}`}>RPI {rpi.rpi.toFixed(2)}</span>
+                      </div>
+                      <div className={`w-full h-1.5 rounded-full ${darkMode ? 'bg-gray-700' : 'bg-gray-200'} overflow-hidden`}>
+                        <div
+                          className={`h-1.5 rounded-full ${rpi.dotColor} transition-all duration-700`}
+                          style={{ width: `${Math.min(100, (rpi.rpi / 4) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* PRESSURE */}
@@ -231,15 +282,19 @@ const Dashboard: React.FC = () => {
                   <span>Pressure</span>
                 </div>
 
-                <span className="font-bold">
-                  {node.name !== 'Node A' ? 'N/A' : `${node.pressure} hPa`}
+                <span className="font-bold flex items-center">
+                  {isValidData(node.pressure) ? `${node.pressure} hPa` : (
+                     <NoDataBadge />
+                  )}
                 </span>
               </div>
 
               {/* FOOTER */}
               <div className={`pt-3 text-xs flex justify-between border-t ${darkMode ? 'text-white/70 border-primary-700' : 'text-gray-500 border-gray-200'}`}>
                 <span>
-                  Last updated: {node.name !== 'Node A' ? 'N/A' : formatSensorDate(node.lastUpdated)}
+                  {node.lastUpdated && node.lastUpdated !== 'N/A' ? `Last updated: ${formatSensorDate(node.lastUpdated)}` : (
+                     <span className={`inline-block h-3 w-32 rounded animate-pulse ${darkMode ? 'bg-primary-800' : 'bg-gray-200'}`}></span>
+                  )}
                 </span>
 
                 <Wifi className="w-4 h-4 text-signodes-500" />
@@ -247,9 +302,10 @@ const Dashboard: React.FC = () => {
 
             </div>
 
-          </div>
+          </motion.div>
 
         ))}
+        </AnimatePresence>
 
       </div>
 

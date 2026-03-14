@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X, Wifi, Clock, Thermometer, Droplets, Wind, Gauge, Sun, Zap } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { formatSensorDate } from '../../utils/dateUtils';
 
 interface SensorDetailsModalProps {
   isOpen: boolean;
@@ -27,50 +29,63 @@ const SensorDetailsModal: React.FC<SensorDetailsModalProps> = ({
   sensorData, 
   darkMode = false 
 }) => {
+  // Hook must be called unconditionally (before any early return)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen || !sensorData) return null;
 
-  // Format time since last update
-  const formatTimeSince = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    
-    if (diffMins < 1) return 'Just now';
-    if (diffMins === 1) return '1 min ago';
-    if (diffMins < 60) return `${diffMins} mins ago`;
-    
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours === 1) return '1 hour ago';
-    if (diffHours < 24) return `${diffHours} hours ago`;
-    
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays === 1) return '1 day ago';
-    return `${diffDays} days ago`;
-  };
-
-  const lastReadingTime = sensorData.lastUpdated ? formatTimeSince(sensorData.lastUpdated) : 'Unknown';
+  const lastReadingTime = sensorData.lastUpdated && sensorData.lastUpdated !== 'N/A' 
+    ? formatSensorDate(sensorData.lastUpdated).replace('Updated ', '')
+    : 'Waiting for signal...';
 
   return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="sensor-details-title"
-    >
-      {/* Backdrop with blur effect */}
-      <div 
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-      
-      {/* Modal content with glassmorphism effect */}
-      <div 
-        className={`relative w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl animate-scale ${darkMode ? 'bg-primary-900/80 backdrop-blur-md border border-primary-800' : 'bg-white backdrop-blur-md border border-gray-200'}`}
-      >
-        {/* Header with status pill */}
-        <div className="p-6 pb-0">
+    <AnimatePresence>
+      {isOpen && sensorData && (
+        <div 
+          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="sensor-details-title"
+        >
+          {/* Backdrop with blur effect */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            onClick={onClose}
+            aria-hidden="true"
+          />
+          
+          {/* Modal content with bottom-sheet capabilities on mobile */}
+          <motion.div 
+            initial={{ y: '100%', opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: '100%', opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className={`relative w-full max-w-lg rounded-t-3xl sm:rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10 ${darkMode ? 'bg-primary-900/95 backdrop-blur-xl border-t sm:border border-primary-800' : 'bg-white/95 backdrop-blur-xl border-t sm:border border-gray-200'} pb-6 sm:pb-0`}
+          >
+            {/* Mobile drag handle */}
+            <div className="w-full flex justify-center pt-3 pb-1 sm:hidden">
+              <div className={`w-12 h-1.5 rounded-full ${darkMode ? 'bg-gray-600' : 'bg-gray-300'}`}></div>
+            </div>
+
+            {/* Header with status pill */}
+            <div className="p-6 pb-0 pt-2 sm:pt-6">
           <div className="flex items-center justify-between mb-2">
             <h2 
               id="sensor-details-title" 
@@ -96,16 +111,16 @@ const SensorDetailsModal: React.FC<SensorDetailsModalProps> = ({
             </span>
             <span className={`text-sm ${darkMode ? 'text-white/70' : 'text-gray-500'}`}>
               <Clock className="w-4 h-4 inline mr-1" />
-              Last Reading: {lastReadingTime}
+              {lastReadingTime}
             </span>
           </div>
         </div>
         
         {/* Sensor data details */}
         <div className="p-6 pt-0">
-          <div className={`grid grid-cols-2 gap-4 ${darkMode ? 'text-white' : 'text-gray-700'}`}>
+          <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${darkMode ? 'text-white' : 'text-gray-700'}`}>
             {/* Location */}
-            <div className="col-span-2">
+            <div className="col-span-1 sm:col-span-2">
               <div className="flex justify-between items-center p-3 rounded-lg mb-2 border border-gray-200 dark:border-primary-700 bg-white dark:bg-primary-800/50">
                 <span className="font-medium">Location</span>
                 <span>{sensorData.location}</span>
@@ -176,7 +191,14 @@ const SensorDetailsModal: React.FC<SensorDetailsModalProps> = ({
                   <Zap className={`w-5 h-5 mr-2 ${darkMode ? 'text-signodes-500' : 'text-signodes-500'}`} />
                   <span className="font-medium">CO Level</span>
                 </div>
-                <span className={`font-bold ${darkMode ? 'text-white' : 'text-signodes-500'}`}>{sensorData.mq_co} ppm</span>
+                <span className={`font-bold ${darkMode ? 'text-white' : 'text-signodes-500'}`}>
+                  {(() => {
+                    const pct = Math.min(100, Math.max(0, Number(sensorData.mq_co)));
+                    const cats = ['Very Clean','Normal','Moderate Pollution','High Pollution','Dangerous'];
+                    const label = pct < 25 ? cats[0] : pct < 50 ? cats[1] : pct < 75 ? cats[2] : pct < 90 ? cats[3] : cats[4];
+                    return `${pct.toFixed(1)}% (${label})`;
+                  })()}
+                </span>
               </div>
             )}
           </div>
@@ -195,9 +217,11 @@ const SensorDetailsModal: React.FC<SensorDetailsModalProps> = ({
               View History
             </button>
           </div>
+          </div>
+        </motion.div>
         </div>
-      </div>
-    </div>
+      )}
+    </AnimatePresence>
   );
 };
 

@@ -9,7 +9,7 @@ const DataTrendsAnalytics: React.FC = () => {
   const nodeData = nodes.length > 0 ? nodes[0] : null;
 
   // Generate time series data based on real sensor data trends
-  const generateGraphData = (type: string, period: string, nodeIndex: number = 0) => {
+  const generateGraphData = React.useCallback((type: string, period: string, nodeIndex: number = 0) => {
     const baseValue = {
       temperature: nodes[nodeIndex]?.temperature || 28,
       pressure: nodes[nodeIndex]?.pressure || 1013,
@@ -80,7 +80,7 @@ const DataTrendsAnalytics: React.FC = () => {
     }
     
     return data;
-  };
+  }, [nodes]);
 
   const graphConfigs = [
     {
@@ -88,8 +88,8 @@ const DataTrendsAnalytics: React.FC = () => {
       title: 'Temperature',
       icon: Thermometer,
       unit: '°C',
-      color: '#00BFFF',
-      bgColor: 'bg-gradient-to-br from-red-50 to-pink-50',
+      color: '#f43f5e', // rose-500
+      bgColor: 'bg-rose-500/10',
       currentValue: nodeData?.temperature || 0
     },
     {
@@ -97,8 +97,8 @@ const DataTrendsAnalytics: React.FC = () => {
       title: 'Humidity',
       icon: Droplets,
       unit: '%',
-      color: '#00BFFF',
-      bgColor: 'bg-gradient-to-br from-cyan-50 to-blue-50',
+      color: '#0ea5e9', // sky-500
+      bgColor: 'bg-sky-500/10',
       currentValue: nodeData?.humidity || 65,
       yAxisMin: 0,
       yAxisMax: 100
@@ -108,8 +108,8 @@ const DataTrendsAnalytics: React.FC = () => {
       title: 'Atmospheric Pressure',
       icon: Wind,
       unit: 'hPa',
-      color: '#00BFFF',
-      bgColor: 'bg-gradient-to-br from-purple-50 to-indigo-50',
+      color: '#6366f1', // indigo-500
+      bgColor: 'bg-indigo-500/10',
       currentValue: nodeData?.pressure || 1013,
       yAxisMin: 990,
       yAxisMax: 1050
@@ -119,8 +119,8 @@ const DataTrendsAnalytics: React.FC = () => {
       title: 'Air Quality Index',
       icon: Gauge,
       unit: 'AQI',
-      color: '#00BFFF',
-      bgColor: 'bg-gradient-to-br from-yellow-50 to-orange-50',
+      color: '#10b981', // emerald-500
+      bgColor: 'bg-emerald-500/10',
       currentValue: nodeData ? Math.max(nodeData.aqi25val || 0, nodeData.aqi10val || 0) : 0
     }
   ];
@@ -148,19 +148,32 @@ const DataTrendsAnalytics: React.FC = () => {
         year: generateGraphData('aqi', 'year')
       }
     };
-  }, [nodes]);
+  }, [generateGraphData]);
+
+  // Graph configuration interface
+  interface GraphConfig {
+    id: string;
+    title: string;
+    icon: React.ElementType;
+    unit: string;
+    color: string;
+    bgColor: string;
+    currentValue: number;
+    yAxisMin?: number;
+    yAxisMax?: number;
+  }
 
   // Individual graph component with interactive controls and enhanced features
-  const IndividualGraph = ({ config }: { config: any }) => {
+  const IndividualGraph = ({ config }: { config: GraphConfig }) => {
     const [selectedPeriod, setSelectedPeriod] = useState('week');
     const [hoveredPoint, setHoveredPoint] = useState<{value: number, time: string, index: number} | null>(null);
     
-    const currentData = (graphData as any)[config.id][selectedPeriod];
+    const currentData = (graphData as Record<string, Record<string, { value: number; time: string }[]>>)[config.id][selectedPeriod];
     // Use custom min/max values if provided in config, otherwise calculate from data
-    const maxValue = config.yAxisMax !== undefined ? config.yAxisMax : Math.max(...currentData.map((d: any) => d.value));
-    const minValue = config.yAxisMin !== undefined ? config.yAxisMin : Math.min(...currentData.map((d: any) => d.value));
-    const dataMaxIndex = currentData.reduce((idx: number, d: any, i: number) => d.value > currentData[idx].value ? i : idx, 0);
-    const dataMinIndex = currentData.reduce((idx: number, d: any, i: number) => d.value < currentData[idx].value ? i : idx, 0);
+    const maxValue = config.yAxisMax !== undefined ? config.yAxisMax : Math.max(...currentData.map((d: { value: number }) => d.value));
+    const minValue = config.yAxisMin !== undefined ? config.yAxisMin : Math.min(...currentData.map((d: { value: number }) => d.value));
+    const dataMaxIndex = currentData.reduce((idx: number, d: { value: number }, i: number) => d.value > currentData[idx].value ? i : idx, 0);
+    const dataMinIndex = currentData.reduce((idx: number, d: { value: number }, i: number) => d.value < currentData[idx].value ? i : idx, 0);
     
     
     // Function to export data as CSV
@@ -168,7 +181,7 @@ const DataTrendsAnalytics: React.FC = () => {
       // Create CSV content
       const csvContent = [
         `Time,${config.title} (${config.unit})`,
-        ...currentData.map((d: any) => `${d.time},${d.value}`)
+        ...currentData.map((d: { time: string, value: number }) => `${d.time},${d.value}`)
       ].join('\n');
       
       // Create a blob and download link
@@ -184,34 +197,40 @@ const DataTrendsAnalytics: React.FC = () => {
     };
     
     return (
-      <div className={`${darkMode ? 'bg-gray-900' : 'bg-white'} rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300`}>
+      <div className={`${darkMode ? 'bg-slate-800/80 border-slate-700/50' : 'bg-white border-slate-200'} border rounded-2xl p-4 md:p-6 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden`} style={{ backdropFilter: 'blur(12px)' }}>
+        
+        {/* Top Border Accent */}
+        <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-current to-transparent opacity-50`} style={{ color: config.color }}></div>
+
         {/* Header with title and controls */}
-        <div className="flex flex-col mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'} flex items-center`}>
-              <config.icon className="w-5 h-5 mr-2" style={{ color: config.color }} />
+        <div className="flex flex-col mb-4 relative z-10">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className={`text-xl font-bold tracking-tight ${darkMode ? 'text-slate-100' : 'text-slate-900'} flex items-center`}>
+              <div className={`p-2 rounded-lg mr-3 shadow-sm`} style={{ backgroundColor: `${config.color}20`, border: `1px solid ${config.color}40` }}>
+                <config.icon className="w-5 h-5" style={{ color: config.color }} />
+              </div>
               {config.title}
-              <span className="ml-2 text-sm font-normal text-gray-400">({config.unit})</span>
+              <span className="ml-2 text-sm font-normal text-slate-400">({config.unit})</span>
             </h3>
-            <div className="text-sm font-medium px-3 py-1 rounded-full" style={{ backgroundColor: `${config.color}20`, color: config.color }}>
+            <div className="text-sm font-bold px-3 py-1 rounded-full border shadow-inner" style={{ backgroundColor: `${config.color}15`, color: config.color, borderColor: `${config.color}30` }}>
               {config.currentValue.toFixed(1)} {config.unit}
             </div>
           </div>
           
           {/* Controls */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
             {/* Period selector */}
-            <div className={`flex ${darkMode ? 'bg-gray-800' : 'bg-gray-100'} rounded-lg p-1`}>
+            <div className={`flex ${darkMode ? 'bg-slate-900/50 border-slate-700/50' : 'bg-slate-100 border-slate-200'} border rounded-lg p-1`}>
               {['week', 'month', 'year'].map((period) => {
                 const selected = selectedPeriod === period;
                 return (
                   <button
                     key={period}
                     onClick={() => setSelectedPeriod(period)}
-                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                    className={`px-4 py-1.5 text-xs font-semibold uppercase tracking-wider rounded-md transition-all ${
                       selected
-                        ? (darkMode ? 'bg-gray-700 shadow-sm' : 'bg-gray-200 shadow-sm')
-                        : (darkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-600 hover:text-gray-800')
+                        ? (darkMode ? 'bg-slate-700 shadow-sm text-slate-100' : 'bg-white shadow-sm text-slate-900')
+                        : (darkMode ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800')
                     }`}
                     style={selected ? { color: config.color } : undefined}
                   >
@@ -224,35 +243,21 @@ const DataTrendsAnalytics: React.FC = () => {
             {/* Export button */}
             <button 
               onClick={exportAsCSV}
-              className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all border ${
                 darkMode ? 
-                'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white' : 
-                'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800'
+                'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white' : 
+                'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800'
               }`}
               aria-label={`Export ${config.title} data as CSV`}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
               <span>Export CSV</span>
             </button>
-          </div>
-          
-          {/* Min/Max display */}
-          <div className="flex justify-between mb-2">
-            <div className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm`}>
-              <span className="block text-xs">Min.</span>
-              <span className={`block text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{currentData[dataMinIndex].value.toFixed(1)}</span>
-              <span className="block text-xs">{currentData[dataMinIndex].time}</span>
-            </div>
-            <div className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm text-right`}>
-              <span className="block text-xs">Max.</span>
-              <span className={`block text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{currentData[dataMaxIndex].value.toFixed(1)}</span>
-              <span className="block text-xs">{currentData[dataMaxIndex].time}</span>
-            </div>
           </div>
         </div>
 
         {/* Graph Area */}
-        <div className="relative h-64 rounded-lg p-6 mb-4 group bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+        <div className="relative h-48 md:h-64 rounded-xl p-3 md:p-6 mb-4 group bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
           <svg className="w-full h-full" viewBox="0 0 500 200">
             {/* Y-axis */}
             <line
@@ -260,7 +265,7 @@ const DataTrendsAnalytics: React.FC = () => {
               y1="20"
               x2="50"
               y2="170"
-              stroke={darkMode ? "#6b7280" : "#374151"}
+              stroke={darkMode ? "#334155" : "#e2e8f0"}
               strokeWidth="2"
             />
             
@@ -270,7 +275,7 @@ const DataTrendsAnalytics: React.FC = () => {
               y1="170"
               x2="450"
               y2="170"
-              stroke={darkMode ? "#6b7280" : "#374151"}
+              stroke={darkMode ? "#334155" : "#e2e8f0"}
               strokeWidth="2"
             />
             
@@ -285,17 +290,17 @@ const DataTrendsAnalytics: React.FC = () => {
                     y1={y}
                     x2="450"
                     y2={y}
-                    stroke={darkMode ? "#374151" : "#e5e7eb"}
+                    stroke={darkMode ? "#334155" : "#e2e8f0"}
                     strokeWidth="1"
-                    strokeDasharray={i === 5 ? "none" : "2,2"}
+                    strokeDasharray={i === 5 ? "none" : "4,4"}
                   />
                   <text
                     x="45"
                     y={y + 4}
                     textAnchor="end"
                     fontSize="11"
-                    fontWeight="500"
-                    fill={darkMode ? "#9ca3af" : "#6b7280"}
+                    fontWeight="600"
+                    fill={darkMode ? "#64748b" : "#94a3b8"}
                   >
                     {value.toFixed(config.unit === '%' ? 0 : 1)}
                   </text>
@@ -308,7 +313,7 @@ const DataTrendsAnalytics: React.FC = () => {
             {/* Line graph with area fill */}
             <path
               d={`M 50,${170 - (currentData[0].value - minValue) / (maxValue - minValue) * 150} ${
-                currentData.map((d: any, i: number) => 
+                currentData.map((d: { value: number }, i: number) => 
                   `L ${50 + (i / (currentData.length - 1)) * 400},${170 - (d.value - minValue) / (maxValue - minValue) * 150}`
                 ).join(' ')
               } L ${50 + 400},170 L 50,170 Z`}
@@ -318,7 +323,7 @@ const DataTrendsAnalytics: React.FC = () => {
             />
             <path
               d={`M 50,${170 - (currentData[0].value - minValue) / (maxValue - minValue) * 150} ${
-                currentData.map((d: any, i: number) => 
+                currentData.map((d: { value: number }, i: number) => 
                   `L ${50 + (i / (currentData.length - 1)) * 400},${170 - (d.value - minValue) / (maxValue - minValue) * 150}`
                 ).join(' ')
               }`}
@@ -332,7 +337,7 @@ const DataTrendsAnalytics: React.FC = () => {
             />
             
             {/* Interactive data points */}
-            {currentData.map((d: any, i: number) => {
+            {currentData.map((d: { value: number, time: string }, i: number) => {
               const cx = 50 + (i / (currentData.length - 1)) * 400;
               const cy = 170 - (d.value - minValue) / (maxValue - minValue) * 150;
               return (
@@ -341,7 +346,7 @@ const DataTrendsAnalytics: React.FC = () => {
                     cx={cx}
                     cy={cy}
                     r="4"
-                    fill={darkMode ? "#1f2937" : "#ffffff"}
+                    fill={darkMode ? "#0f172a" : "#ffffff"}
                     stroke={config.color}
                     strokeWidth="3"
                     className="cursor-pointer transition-all duration-200 hover:r-6"
@@ -423,20 +428,20 @@ const DataTrendsAnalytics: React.FC = () => {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 text-center">
-          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg p-3 border border-gray-200 dark:border-gray-700`}>
-            <div className="text-lg font-bold" style={{ color: config.color }}>{currentData[dataMaxIndex].value.toFixed(1)}</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">Max</div>
+        <div className="grid grid-cols-3 gap-4 text-center mt-3 border-t border-slate-200 dark:border-slate-700/50 pt-5">
+          <div className="flex flex-col items-center">
+            <div className="text-xl font-bold tracking-tight" style={{ color: config.color }}>{currentData[dataMaxIndex].value.toFixed(1)}</div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mt-1">Max</div>
           </div>
-          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg p-3 border border-gray-200 dark:border-gray-700`}>
-            <div className="text-lg font-bold" style={{ color: config.color }}>
-              {Math.round(currentData.reduce((sum: number, d: any) => sum + d.value, 0) / currentData.length * 10) / 10}
+          <div className="flex flex-col items-center border-l border-r border-slate-200 dark:border-slate-700/50">
+            <div className="text-xl font-bold tracking-tight" style={{ color: config.color }}>
+              {Math.round(currentData.reduce((sum: number, d: { value: number }) => sum + d.value, 0) / currentData.length * 10) / 10}
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">Avg</div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mt-1">Avg</div>
           </div>
-          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg p-3 border border-gray-200 dark:border-gray-700`}>
-            <div className="text-lg font-bold" style={{ color: config.color }}>{currentData[dataMinIndex].value.toFixed(1)}</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">Min</div>
+          <div className="flex flex-col items-center">
+            <div className="text-xl font-bold tracking-tight" style={{ color: config.color }}>{currentData[dataMinIndex].value.toFixed(1)}</div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mt-1">Min</div>
           </div>
         </div>
       </div>
@@ -444,17 +449,15 @@ const DataTrendsAnalytics: React.FC = () => {
   };
 
   return (
-    <section className={`py-16 ${darkMode ? 'bg-gray-950 text-white' : 'bg-gradient-to-br from-indigo-50 to-purple-50'}`}>
-      <div className="container mx-auto px-4">
+    <section className={`py-16 ${darkMode ? 'bg-slate-900/50 text-slate-100 relative' : 'bg-slate-50 text-slate-900 relative'}`}>
+      <div className={`absolute inset-0 border-t ${darkMode ? 'border-slate-800/50' : 'border-slate-200'} pointer-events-none`}></div>
+      <div className="container mx-auto px-4 relative z-10">
         {/* Header */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-100 rounded-full mb-4">
-            <Gauge className="w-8 h-8 text-indigo-600" />
-          </div>
-          <h2 className={`text-3xl md:text-4xl font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+        <div className="text-center mb-10 md:mb-12">
+          <h2 className={`text-3xl md:text-4xl font-bold mb-3 tracking-tight ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
             Data Trends & Analytics
           </h2>
-          <p className={`text-lg max-w-2xl mx-auto ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+          <p className={`text-base md:text-lg max-w-2xl mx-auto ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
             Explore detailed analytics and trends from your weather station data
           </p>
         </div>

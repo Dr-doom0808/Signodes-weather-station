@@ -1,5 +1,5 @@
 import React from 'react';
-import { Cpu, Database, Users, Wifi, Cloud, HardDrive, Thermometer, Droplets, Gauge, Wind } from 'lucide-react';
+import { Cpu, Wifi, Cloud, HardDrive, Thermometer, Droplets, Gauge, Wind } from 'lucide-react';
 import { useDarkMode } from '../../context/DarkModeContext';
 
 const DeploymentSpecification: React.FC = () => {
@@ -25,7 +25,7 @@ const DeploymentSpecification: React.FC = () => {
   ];
 
   return (
-    <section className={`py-16 ${darkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-slate-50 to-gray-50'}`}>
+    <section id="deployment" className={`py-16 ${darkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-slate-50 to-gray-50'}`}>
       <div className="container mx-auto px-4">
         <div className="max-w-7xl mx-auto">
           {/* Header */}

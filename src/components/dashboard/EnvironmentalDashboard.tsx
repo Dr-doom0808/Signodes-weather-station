@@ -26,19 +26,19 @@ const EnvironmentalDashboard: React.FC = () => {
   // Helper function to get AQI color and status
   const getAqiInfo = (aqi: number) => {
     if (darkMode) {
-      if (aqi <= 50) return { color: 'text-green-400', bgColor: 'bg-green-900/30 border-green-800/50', status: 'Good', description: 'Air quality is excellent' };
-      if (aqi <= 100) return { color: 'text-yellow-400', bgColor: 'bg-yellow-900/30 border-yellow-800/50', status: 'Moderate', description: 'Air quality is acceptable' };
-      if (aqi <= 150) return { color: 'text-orange-400', bgColor: 'bg-orange-900/30 border-orange-800/50', status: 'Unhealthy for Sensitive Groups', description: 'Sensitive people may experience symptoms' };
-      if (aqi <= 200) return { color: 'text-red-400', bgColor: 'bg-red-900/30 border-red-800/50', status: 'Unhealthy', description: 'Everyone may experience health effects' };
-      if (aqi <= 300) return { color: 'text-purple-400', bgColor: 'bg-purple-900/30 border-purple-800/50', status: 'Very Unhealthy', description: 'Health alert for everyone' };
-      return { color: 'text-red-500', bgColor: 'bg-red-900/40 border-red-800/60', status: 'Hazardous', description: 'Emergency conditions' };
+      if (aqi <= 50) return { color: 'text-emerald-400', bgColor: 'bg-emerald-900/20 border-emerald-800/40', status: 'Good', description: 'Air quality is excellent' };
+      if (aqi <= 100) return { color: 'text-amber-400', bgColor: 'bg-amber-900/20 border-amber-800/40', status: 'Moderate', description: 'Air quality is acceptable' };
+      if (aqi <= 150) return { color: 'text-orange-400', bgColor: 'bg-orange-900/20 border-orange-800/40', status: 'Unhealthy for Sensitive Groups', description: 'Sensitive people may experience symptoms' };
+      if (aqi <= 200) return { color: 'text-rose-400', bgColor: 'bg-rose-900/20 border-rose-800/40', status: 'Unhealthy', description: 'Everyone may experience health effects' };
+      if (aqi <= 300) return { color: 'text-purple-400', bgColor: 'bg-purple-900/20 border-purple-800/40', status: 'Very Unhealthy', description: 'Health alert for everyone' };
+      return { color: 'text-red-500', bgColor: 'bg-red-900/30 border-red-800/50', status: 'Hazardous', description: 'Emergency conditions' };
     } else {
-      if (aqi <= 50) return { color: 'text-green-600', bgColor: 'bg-green-100 border-green-200', status: 'Good', description: 'Air quality is excellent' };
-      if (aqi <= 100) return { color: 'text-yellow-600', bgColor: 'bg-yellow-100 border-yellow-200', status: 'Moderate', description: 'Air quality is acceptable' };
-      if (aqi <= 150) return { color: 'text-orange-600', bgColor: 'bg-orange-100 border-orange-200', status: 'Unhealthy for Sensitive Groups', description: 'Sensitive people may experience symptoms' };
-      if (aqi <= 200) return { color: 'text-red-600', bgColor: 'bg-red-100 border-red-200', status: 'Unhealthy', description: 'Everyone may experience health effects' };
-      if (aqi <= 300) return { color: 'text-purple-600', bgColor: 'bg-purple-100 border-purple-200', status: 'Very Unhealthy', description: 'Health alert for everyone' };
-      return { color: 'text-red-800', bgColor: 'bg-red-200 border-red-300', status: 'Hazardous', description: 'Emergency conditions' };
+      if (aqi <= 50) return { color: 'text-emerald-600', bgColor: 'bg-emerald-50 border-emerald-200', status: 'Good', description: 'Air quality is excellent' };
+      if (aqi <= 100) return { color: 'text-amber-600', bgColor: 'bg-amber-50 border-amber-200', status: 'Moderate', description: 'Air quality is acceptable' };
+      if (aqi <= 150) return { color: 'text-orange-600', bgColor: 'bg-orange-50 border-orange-200', status: 'Unhealthy for Sensitive Groups', description: 'Sensitive people may experience symptoms' };
+      if (aqi <= 200) return { color: 'text-rose-600', bgColor: 'bg-rose-50 border-rose-200', status: 'Unhealthy', description: 'Everyone may experience health effects' };
+      if (aqi <= 300) return { color: 'text-purple-600', bgColor: 'bg-purple-50 border-purple-200', status: 'Very Unhealthy', description: 'Health alert for everyone' };
+      return { color: 'text-red-800', bgColor: 'bg-red-100 border-red-300', status: 'Hazardous', description: 'Emergency conditions' };
     }
   };
 
@@ -48,7 +48,7 @@ const EnvironmentalDashboard: React.FC = () => {
   // Main dashboard data - 5 boxes
   const dashboardData = [
     {
-      name: 'Air Quality Index',
+      name: 'AQI',
       value: overallAQI > 0 ? formatAQIWithBounds(overallAQI) : 'N/A',
       description: aqiInfo.status,
       unit: 'AQI',
@@ -63,8 +63,8 @@ const EnvironmentalDashboard: React.FC = () => {
       description: 'Current ambient temperature',
       unit: '°C',
       icon: Thermometer,
-      color: darkMode ? 'text-red-400' : 'text-red-500',
-      bgColor: darkMode ? 'bg-red-900/30 border-red-800/50' : 'bg-red-50 border-red-200',
+      color: darkMode ? 'text-rose-400' : 'text-rose-500',
+      bgColor: darkMode ? 'bg-rose-900/20 border-rose-800/40' : 'bg-rose-50 border-rose-200',
       range: '-10 to 50'
     },
     {
@@ -73,8 +73,8 @@ const EnvironmentalDashboard: React.FC = () => {
       description: 'Relative humidity level',
       unit: '%',
       icon: Droplets,
-      color: darkMode ? 'text-blue-400' : 'text-blue-500',
-      bgColor: darkMode ? 'bg-blue-900/30 border-blue-800/50' : 'bg-blue-50 border-blue-200',
+      color: darkMode ? 'text-sky-400' : 'text-sky-500',
+      bgColor: darkMode ? 'bg-sky-900/20 border-sky-800/40' : 'bg-sky-50 border-sky-200',
       range: '0-100'
     },
     {
@@ -83,8 +83,8 @@ const EnvironmentalDashboard: React.FC = () => {
       description: 'UV radiation level',
       unit: 'mW/cm²',
       icon: Sun,
-      color: darkMode ? 'text-yellow-400' : 'text-yellow-500',
-      bgColor: darkMode ? 'bg-yellow-900/30 border-yellow-800/50' : 'bg-yellow-50 border-yellow-200',
+      color: darkMode ? 'text-amber-400' : 'text-amber-500',
+      bgColor: darkMode ? 'bg-amber-900/20 border-amber-800/40' : 'bg-amber-50 border-amber-200',
       range: '0-100'
     },
     {
@@ -93,8 +93,8 @@ const EnvironmentalDashboard: React.FC = () => {
       description: 'Precipitation detection',
       unit: '',
       icon: CloudRain,
-      color: nodeData?.rain === 'Yes' ? (darkMode ? 'text-blue-400' : 'text-blue-600') : (darkMode ? 'text-gray-400' : 'text-gray-500'),
-      bgColor: nodeData?.rain === 'Yes' ? (darkMode ? 'bg-blue-900/30 border-blue-800/50' : 'bg-blue-50 border-blue-200') : (darkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'),
+      color: nodeData?.rain === 'Yes' ? (darkMode ? 'text-indigo-400' : 'text-indigo-600') : (darkMode ? 'text-slate-400' : 'text-slate-500'),
+      bgColor: nodeData?.rain === 'Yes' ? (darkMode ? 'bg-indigo-900/20 border-indigo-800/40' : 'bg-indigo-50 border-indigo-200') : (darkMode ? 'bg-slate-800/50 border-slate-700/50' : 'bg-slate-50 border-slate-200'),
       range: 'Yes/No'
      }
   ];
@@ -122,34 +122,32 @@ const EnvironmentalDashboard: React.FC = () => {
 
   return (
     <section 
+      id="sensor-data"
       className={`relative min-h-screen w-full overflow-hidden`}
       role="region"
       aria-labelledby="environmental-dashboard-title"
     >
-      <div className="absolute inset-0 -z-10">
+      <div className="absolute inset-0 -z-10 bg-slate-50 dark:bg-slate-900">
         <WavyBackground
-          className="h-full w-full"
-          colors={darkMode ? ["#1e3a8a40", "#1e40af30", "#1e3a8a40"] : ["#bfdbfe80", "#93c5fd80", "#bfdbfe80"]}
+          className="h-full w-full opacity-60 dark:opacity-40"
+          colors={darkMode ? ["#0ea5e980", "#38bdf860", "#22c55e40"] : ["#bae6fd80", "#7dd3fc80", "#bbf7d080"]}
           waveWidth={60}
           backgroundFill={darkMode ? "#0f172a" : "#f8fafc"}
-          blur={10}
+          blur={14}
           speed="slow"
-          waveOpacity={0.15}
+          waveOpacity={0.4}
         />
       </div>
       <Meteors className="absolute" />
-      <div className="container mx-auto px-4 py-16 relative">
-        <div className="max-w-6xl mx-auto space-y-10 animate-fade-in">
-          <div className="text-center mb-10">
-            <h2 id="environmental-dashboard-title" className={`text-4xl font-bold ${darkMode ? 'text-primary-50' : 'text-primary-900'} mb-4 animate-slide-up`}>Environmental Dashboard</h2>
-            <p className={`${darkMode ? 'text-primary-300' : 'text-primary-600'} max-w-3xl mx-auto text-lg animate-slide-up`} style={{ animationDelay: '100ms' }}>
+      <div className="container mx-auto px-4 py-8 md:py-16 relative">
+        <div className="max-w-6xl mx-auto space-y-6 md:space-y-10 animate-fade-in">
+          <div className="text-center mb-6 md:mb-10">
+            <h2 id="environmental-dashboard-title" className={`text-2xl md:text-4xl font-bold ${darkMode ? 'text-slate-100' : 'text-slate-900'} mb-2 md:mb-4 animate-slide-up tracking-tight`}>Environmental Dashboard</h2>
+            <p className={`${darkMode ? 'text-slate-400' : 'text-slate-600'} max-w-3xl mx-auto text-sm md:text-lg animate-slide-up`} style={{ animationDelay: '100ms' }}>
               Real-time environmental metrics from our sensor network, providing insights into campus air quality and conditions.
             </p>
-            <div className={`flex items-center justify-center mt-4 ${darkMode ? 'text-primary-300' : 'text-primary-600'}`}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="text-sm font-medium">
+            <div className={`flex items-center justify-center mt-5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${darkMode ? 'bg-slate-800/80 border-slate-700' : 'bg-white border-slate-200 shadow-sm'}`}>
                 Last Updated: {nodes[0]?.lastUpdated ? (() => {
                   try {
                     let dateString = nodes[0].lastUpdated;
@@ -168,7 +166,7 @@ const EnvironmentalDashboard: React.FC = () => {
                       minute: '2-digit',
                       hour12: true
                     });
-                  } catch (e) {
+                  } catch {
                     return 'Unknown';
                   }
                 })() : 'N/A'}
@@ -177,54 +175,57 @@ const EnvironmentalDashboard: React.FC = () => {
           </div>
           {/* Environmental Dashboard Cards - Only 5 Parameters */}
           <div 
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8"
+            className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-8"
             role="group"
             aria-label="Environmental metrics"
           >
             {dashboardData.map((item, index) => (
               <div 
                 key={index} 
-                className={`${item.bgColor} p-6 rounded-3xl ${darkMode ? 'shadow-glow border border-primary-700' : 'shadow-card border border-primary-100'} hover:shadow-glow transition-all duration-300 transform hover:-translate-y-2 focus-within:ring-2 focus-within:ring-signodes-400 animate-scale`}
-                style={{ animationDelay: `${index * 150}ms` }}
+                className={`relative overflow-hidden ${darkMode ? 'bg-slate-800/90 border-slate-700/50' : 'bg-white border-slate-200'} p-4 md:p-6 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border focus-within:ring-2 focus-within:ring-sky-500/50 animate-scale group`}
+                style={{ animationDelay: `${index * 150}ms`, backdropFilter: 'blur(12px)' }}
                 role="group"
                 aria-label={`${item.name} reading`}
                 tabIndex={0}
               >
+                {/* Subtle top border accent based on category color */}
+                <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-current to-transparent opacity-50 ${item.color}`}></div>
+
                 <div className="text-center">
                   <div className="flex justify-center mb-5">
-                    <div className={`p-4 ${darkMode ? 'bg-primary-800 shadow-inner-light' : 'bg-white shadow-soft'} rounded-full animate-float`}>
-                      <item.icon className={`h-9 w-9 ${item.color}`} aria-hidden="true" />
+                    <div className={`p-4 rounded-xl ${item.bgColor} border transition-colors duration-300 group-hover:scale-110`}>
+                      <item.icon className={`h-8 w-8 ${item.color}`} aria-hidden="true" />
                     </div>
                   </div>
                   
-                  <h3 className={`text-xl font-semibold ${darkMode ? 'text-primary-50' : 'text-primary-900'} mb-3`}>{item.name}</h3>
+                  <h3 className={`text-base font-semibold ${darkMode ? 'text-slate-300' : 'text-slate-600'} mb-1 uppercase tracking-wider`}>{item.name}</h3>
                   
                   <div 
-                    className={`text-4xl font-bold ${item.color} mb-2 animate-pulse-slow`}
-                    role={item.name === 'Air Quality Index' ? 'meter' : undefined}
+                    className={`text-2xl md:text-4xl font-bold ${darkMode ? 'text-white' : 'text-slate-900'} mb-1 tracking-tight`}
+                    role={item.name === 'AQI' ? 'meter' : undefined}
                     aria-valuetext={`${item.value}${item.unit}`}
                     aria-label={`${item.name}: ${item.value}${item.unit}`}
                   >
                     {item.value}
-                    {item.unit && <span className="text-lg ml-1">{item.unit}</span>}
+                    {item.unit && <span className={`text-lg ml-1 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>{item.unit}</span>}
                   </div>
                   
-                  <p className={`text-sm ${darkMode ? 'text-primary-300' : 'text-primary-600'} mb-4`}>{item.description}</p>
+                  <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'} mb-4 line-clamp-1`}>{item.description}</p>
                   
-                  <div className={`text-xs ${darkMode ? 'text-primary-400' : 'text-primary-500'} font-medium`}>
-                    Range: {item.range}
-                  </div>
-                  
-                  {/* Status indicator */}
-                  <div className="mt-5 flex items-center justify-center">
-                    <div 
-                      className={`w-3 h-3 rounded-full ${item.value !== 'N/A' ? (darkMode ? 'bg-success-500' : 'bg-success-400') : (darkMode ? 'bg-gray-600' : 'bg-gray-400')} animate-pulse`}
-                      role="status"
-                      aria-label={item.value !== 'N/A' ? 'Live data' : 'Offline'}
-                    ></div>
-                    <span className={`ml-2 text-xs font-medium ${darkMode ? 'text-primary-400' : 'text-primary-500'}`}>
-                      {item.value !== 'N/A' ? 'Live' : 'Offline'}
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-700/50 flex justify-between items-center mt-auto">
+                    <span className={`text-xs ${darkMode ? 'text-slate-500' : 'text-slate-400'} font-medium`}>
+                      Range: {item.range}
                     </span>
+                    <div className="flex items-center">
+                      <div 
+                        className={`w-2 h-2 rounded-full ${item.value !== 'N/A' ? (darkMode ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'bg-emerald-500') : 'bg-slate-500'} mr-1.5`}
+                        role="status"
+                        aria-label={item.value !== 'N/A' ? 'Live data' : 'Offline'}
+                      ></div>
+                      <span className={`text-xs font-medium ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                        {item.value !== 'N/A' ? 'Live' : 'Offline'}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
