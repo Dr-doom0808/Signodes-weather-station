@@ -4,10 +4,10 @@
  */
 
 function getUVRisk(uvIndex) {
-  if (uvIndex <= 2) return 'Low';
-  if (uvIndex <= 5) return 'Moderate';
-  if (uvIndex <= 7) return 'High';
-  if (uvIndex <= 10) return 'Very High';
+  if (uvIndex <= 20) return 'Low';
+  if (uvIndex <= 40) return 'Moderate';
+  if (uvIndex <= 60) return 'High';
+  if (uvIndex <= 80) return 'Very High';
   return 'Extreme';
 }
 

@@ -142,18 +142,18 @@ const AirQualityBar: React.FC = () => {
           {/* Main Air Quality Bar (Hero Card on Mobile) */}
           <div className={`${darkMode ? 'bg-primary-800/90 backdrop-blur-sm border border-primary-700' : 'bg-white/95 backdrop-blur-sm'} rounded-3xl shadow-card p-5 md:p-8 mb-6 md:mb-10 transition-all duration-300 hover:shadow-glow animate-slide-up`}>
             {/* Mobile Header: Temperature + AQI side-by-side */}
-            <div className="md:hidden flex justify-between items-start mb-6 border-b border-white/10 pb-4">
+            <div className={`md:hidden flex justify-between items-start mb-6 border-b ${darkMode ? 'border-white/10' : 'border-gray-200'} pb-4`}>
                <div>
-                  <div className="flex items-center text-white/80 text-sm font-medium mb-1">
+                  <div className={`flex items-center ${darkMode ? 'text-white/80' : 'text-gray-500'} text-sm font-medium mb-1`}>
                      <Thermometer className="w-4 h-4 mr-1" /> Temperature
                   </div>
                   <div className={`text-5xl font-bold bg-gradient-to-r ${tempColor} bg-clip-text text-transparent`}>{temperature}°</div>
                </div>
                <div className="text-right">
-                  <div className="flex items-center justify-end text-white/80 text-sm font-medium mb-1">
+                  <div className={`flex items-center justify-end ${darkMode ? 'text-white/80' : 'text-gray-500'} text-sm font-medium mb-1`}>
                      <div className={`w-3 h-3 ${aqiInfo.color} rounded-full mr-1.5 shadow-inner-light`}></div> AQI
                   </div>
-                  <div className="text-5xl font-bold text-white mb-1">{overallAQI}</div>
+                  <div className={`text-5xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'} mb-1`}>{overallAQI}</div>
                   <div className={`text-sm font-bold ${aqiInfo.textColor}`}>{aqiInfo.status}</div>
                </div>
             </div>

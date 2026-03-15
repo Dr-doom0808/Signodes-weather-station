@@ -37,63 +37,74 @@ function parseSensorData(textData) {
   const trimmed = textData.trim();
   let sensorData = [];
 
-  // Try JSON format first (for readrange queries)
+  // Try JSON format first
   if (trimmed.startsWith('[')) {
     try {
-      const jsonData = JSON.parse(trimmed);
+      let jsonData = JSON.parse(trimmed);
       if (Array.isArray(jsonData)) {
-        sensorData = jsonData
-          .map((row, index) => {
+        if (jsonData.length > 0 && Array.isArray(jsonData[0])) {
+          // Case 1: JSON is array of arrays (CSV-like), convert to objects
+          sensorData = jsonData.map((row, idx) => {
             if (!Array.isArray(row) || row.length < 16) return null;
+            
             return {
-              id: `node-${index + 1}`,
+              id: `node-${idx + 1}`,
               name: 'Node A',
               location: 'Main Campus',
-              latitude: parseFloat(row[7]) || 0,
-              longitude: parseFloat(row[8]) || 0,
-              temperature: parseFloat(row[2]) || 0,
-              pressure: parseFloat(row[1]) || 0,
-              humidity: parseFloat(row[3]) || 0,
-              aqi25val: parseFloat(row[6]) || 0,
-              aqi10val: parseFloat(row[5]) || 0,
-              uvIndex: parseFloat(row[9]) || 0,
-              uvRisk: getUVRisk(parseFloat(row[9]) || 0),
-              rain: row[13] === 'Yes' ? 'Yes' : 'No',
-              mq_co: parseFloat(row[10]) || 0,
-              lastUpdated: row[0] || new Date().toISOString(),
+              latitude: parseFloat(row[7]?.toString().trim()) || 0,
+              longitude: parseFloat(row[8]?.toString().trim()) || 0,
+              temperature: parseFloat(row[2]?.toString().trim()) || 0,
+              pressure: parseFloat(row[1]?.toString().trim()) || 0,
+              humidity: parseFloat(row[3]?.toString().trim()) || 0,
+              aqi25val: parseFloat(row[6]?.toString().trim()) || 0,
+              aqi10val: parseFloat(row[5]?.toString().trim()) || 0,
+              uvIndex: parseFloat(row[14]?.toString().trim()) || 0,
+              uvRisk: row[15]?.toString().trim() || getUVRisk(parseFloat(row[14]) || 0),
+              rain: row[13]?.toString().trim() === 'Yes' ? 'Yes' : 'No',
+              mq_co: parseFloat(row[10]?.toString().trim()) || 0,
+              lastUpdated: row[0]?.toString().trim() || new Date().toISOString(),
             };
-          })
-          .filter(item => item !== null);
+          }).filter(item => item !== null);
+        } else {
+          // Case 2: JSON is already array of objects, use as-is
+          sensorData = jsonData;
+        }
       }
     } catch (e) {
       console.warn('JSON parsing failed, attempting CSV fallback');
+      sensorData = [];
     }
   }
 
-  // Fallback to CSV parsing
+  // Fallback to CSV parsing (if JSON failed or wasn't JSON)
   if (sensorData.length === 0) {
     const rows = trimmed.split('\n').filter(r => r.trim() !== '');
     sensorData = rows
       .map((row, index) => {
-        const columns = row.split(',');
-        if (columns.length < 16) return null;
-        return {
-          id: `node-${index + 1}`,
-          name: 'Node A',
-          location: 'Main Campus',
-          latitude: parseFloat(columns[7]?.trim()) || 0,
-          longitude: parseFloat(columns[8]?.trim()) || 0,
-          temperature: parseFloat(columns[2]?.trim()) || 0,
-          pressure: parseFloat(columns[1]?.trim()) || 0,
-          humidity: parseFloat(columns[3]?.trim()) || 0,
-          aqi25val: parseFloat(columns[6]?.trim()) || 0,
-          aqi10val: parseFloat(columns[5]?.trim()) || 0,
-          uvIndex: parseFloat(columns[9]?.trim()) || 0,
-          uvRisk: getUVRisk(parseFloat(columns[9]?.trim()) || 0),
-          rain: columns[13]?.trim() === 'Yes' ? 'Yes' : 'No',
-          mq_co: parseFloat(columns[10]?.trim()) || 0,
-          lastUpdated: columns[0]?.trim() || new Date().toISOString(),
-        };
+        try {
+          const columns = row.split(',');
+          if (columns.length < 16) return null;
+          
+          return {
+            id: `node-${index + 1}`,
+            name: 'Node A',
+            location: 'Main Campus',
+            latitude: parseFloat(columns[7]?.trim()) || 0,
+            longitude: parseFloat(columns[8]?.trim()) || 0,
+            temperature: parseFloat(columns[2]?.trim()) || 0,
+            pressure: parseFloat(columns[1]?.trim()) || 0,
+            humidity: parseFloat(columns[3]?.trim()) || 0,
+            aqi25val: parseFloat(columns[6]?.trim()) || 0,
+            aqi10val: parseFloat(columns[5]?.trim()) || 0,
+            uvIndex: parseFloat(columns[14]?.trim()) || 0,
+            uvRisk: columns[15]?.trim() || getUVRisk(parseFloat(columns[14]?.trim()) || 0),
+            rain: columns[13]?.trim() === 'Yes' ? 'Yes' : 'No',
+            mq_co: parseFloat(columns[10]?.trim()) || 0,
+            lastUpdated: columns[0]?.trim() || new Date().toISOString(),
+          };
+        } catch (e) {
+          return null;
+        }
       })
       .filter(item => item !== null);
   }
@@ -157,11 +168,15 @@ exports.handler = async (event, context) => {
 
     const url = `${GOOGLE_SCRIPT_URL}?${params.toString()}`;
     
-    // Fetch data from Google Apps Script (do not log full URL for security)
+    // Fetch data from Google Apps Script
     console.log('Fetching sensor data from Google Apps Script');
     const response = await axios.get(url, {
       responseType: 'text',
       timeout: 30000, // 30 second timeout
+      headers: {
+        Accept: 'application/json, text/plain',
+        'Cache-Control': 'no-cache',
+      },
     });
 
     const textData = response.data;
