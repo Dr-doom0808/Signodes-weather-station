@@ -54,7 +54,7 @@ const Dashboard: React.FC = () => {
       if (isNaN(lastUpdated.getTime())) return false;
 
       const now = new Date();
-      const OFFLINE_THRESHOLD_MS = 15 * 60 * 1000;
+      const OFFLINE_THRESHOLD_MS = 35 * 60 * 1000; // 35 min (enough for 2 cycles + margin)
 
       return (now.getTime() - lastUpdated.getTime()) < OFFLINE_THRESHOLD_MS;
     } catch {

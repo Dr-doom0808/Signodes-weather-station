@@ -34,6 +34,11 @@ const API_URL = `${API_BASE}`;
 const REQUEST_TIMEOUT = 30000; // 30 seconds
 const USE_MOCK_DATA = import.meta.env.MODE === 'development' && import.meta.env.VITE_USE_MOCK_DATA === 'true';
 
+// In-memory cache for historical data
+let historicalDataCache: SensorData[] | null = null;
+let lastCacheUpdate: number = 0;
+const CACHE_TTL = 15 * 60 * 1000; // 15 minutes cache (synced with hardware cycle)
+
 /**
  * Fetch request with timeout
  * @param {string} url - URL to fetch
@@ -96,13 +101,13 @@ export async function fetchSensorData(): Promise<SensorData[]> {
   try {
     console.log('[fetchSensorData] Starting data fetch from Google Sheet...');
     
-    // First attempt: Try with a very large range to get all data
+    // First attempt: Try with a reasonable range to get all data
     let allData: SensorData[] = [];
     
-    // Try fetching with readrange100000 (100k rows - should be enough for most sheets)
+    // Try fetching with readrange5000 (shorter range for typical dashboard load)
     try {
-      console.log('[fetchSensorData] Attempting to fetch 100,000 rows...');
-      const response = await fetchWithTimeout(`${API_URL}?sts=readrange100000`, {
+      console.log('[fetchSensorData] Attempting to fetch 5,000 rows...');
+      const response = await fetchWithTimeout(`${API_URL}?sts=readrange5000`, {
         method: 'GET',
       });
 
@@ -129,7 +134,7 @@ export async function fetchSensorData(): Promise<SensorData[]> {
       console.log(`[fetchSensorData] Validated ${validData.length} sensor records`);
       allData = validData;
     } catch {
-      console.warn('[fetchSensorData] Failed with readrange100000, trying alternate endpoint...');
+      console.warn('[fetchSensorData] Failed with readrange5000, trying alternate endpoint...');
       
       // Fallback: Try with read endpoint which might return all available data
       try {
@@ -179,7 +184,15 @@ export async function fetchSensorData(): Promise<SensorData[]> {
 export async function fetchAllHistoricalData(
   onProgress?: (loaded: number) => void
 ): Promise<SensorData[]> {
-  const CHUNK_SIZE = 5000;
+  // Check cache first
+  const now = Date.now();
+  if (historicalDataCache && (now - lastCacheUpdate < CACHE_TTL)) {
+    console.log('[fetchAllHistoricalData] Returning cached data');
+    if (onProgress) onProgress(historicalDataCache.length);
+    return historicalDataCache;
+  }
+
+  const CHUNK_SIZE = 2500;
   const allData: SensorData[] = [];
   const seen = new Set<string>();
 
@@ -241,6 +254,11 @@ export async function fetchAllHistoricalData(
   }
 
   console.log(`[fetchAllHistoricalData] Done. Total records: ${allData.length}`);
+  
+  // Update cache
+  historicalDataCache = allData;
+  lastCacheUpdate = Date.now();
+  
   return allData;
 }
 
@@ -305,8 +323,9 @@ export async function fetchRecentSensorData(count: number): Promise<SensorData[]
  */
 export async function fetchLatestSensorData(): Promise<SensorData | null> {
   try {
-    const data = await fetchSensorData();
-    return data.length > 0 ? data[data.length - 1] : null;
+    // Optimization: Fetch only the single most recent row instead of 100k rows
+    const data = await fetchRecentSensorData(1);
+    return data.length > 0 ? data[0] : null;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[fetchLatestSensorData] Error fetching latest sensor data:', errorMessage);

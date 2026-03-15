@@ -112,12 +112,12 @@ export const NodesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Perform initial fetch
     fetchData();
 
-    // Set up polling every 5 minutes (300000 ms)
+    // Set up polling every 15 minutes (900000 ms) - synced with hardware data upload
     const intervalId = setInterval(() => {
       fetchData().catch((err) => {
         console.error('Polling error:', err);
       });
-    }, 300000);
+    }, 900000);
 
     // Cleanup on unmount
     return () => {
