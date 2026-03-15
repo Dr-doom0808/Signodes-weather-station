@@ -21,8 +21,8 @@ export const NodesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const controller = new AbortController();
       timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      // Fetch the last 5 rows from Google Sheets via Apps Script (readrange5)
-      const sensorData = await fetchRecentSensorData(5);
+      // Fetch only the single latest row (readrange1) to save maximum bandwidth
+      const sensorData = await fetchRecentSensorData(1);
 
       // Clear timeout on successful fetch
       if (timeoutId) {

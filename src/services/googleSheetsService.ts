@@ -237,8 +237,9 @@ export async function fetchAllHistoricalData(
       console.log(`[fetchAllHistoricalData] Chunk ${attempt}: got ${valid.length} valid, ${newCount} new. Total: ${allData.length}`);
       if (onProgress) onProgress(allData.length);
 
-      // If the API returned fewer than the full chunk size, we've reached the end
-      if (valid.length < CHUNK_SIZE) {
+      // If the API returned fewer than the total requested amount (chunkCount), 
+      // it means we've reached the end of the spreadsheet.
+      if (valid.length < chunkCount) {
         hasMore = false;
         console.log('[fetchAllHistoricalData] Reached end of data.');
       }
